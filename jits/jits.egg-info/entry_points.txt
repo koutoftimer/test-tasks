@@ -1,5 +1,0 @@
-      [paste.app_factory]
-      main = jits:main
-      [console_scripts]
-      initialize_jits_db = jits.scripts.initializedb:main
-      
