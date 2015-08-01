@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="{{ request.locale_name }}">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="pyramid web application">
+    <meta name="author" content="Pylons Project">
+    <link rel="shortcut icon" href="{{ request.static_url('jits:static/pyramid-16x16.png') }}">
+
+    <title>Alchemy Scaffold for The Pyramid Web Framework</title>
+
+    <!-- Bootstrap core CSS -->
+    <link href="//oss.maxcdn.com/libs/twitter-bootstrap/3.0.3/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Custom styles for this scaffold -->
+    <link href="{{ request.static_url('jits:static/theme.css') }}" rel="stylesheet">
+
+    <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+      <script src="//oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+      <script src="//oss.maxcdn.com/libs/respond.js/1.3.0/respond.min.js"></script>
+    <![endif]-->
+  </head>
+
+  <body>
+
+    <div class="starter-template">
+      <div class="container">
+
+        <div class="row">
+          <div class="col-md-1">
+            <label for="name">Name: </label>
+          </div>
+          <div class="col-md-11">
+            <input id="name" type="text" placeholder="Jack"
+                   data-bind="value: person.name">
+            <div class="alert alert-danger" role="alert"
+                 data-bind="visible: person.errors.name">
+              <span class="glyphicon glyphicon-exclamation-sign" aria-hidden="true"></span>
+              <span data-bind="text: person.errors.name"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-md-1">
+            <label for="email">Email: </label>
+          </div>
+          <div class="col-md-11">
+            <input id="email" type="text" placeholder="Jack@company.com"
+                   data-bind="value: person.email">
+            <div class="alert alert-danger" role="alert"
+                 data-bind="visible: person.errors.email">
+              <span class="glyphicon glyphicon-exclamation-sign" aria-hidden="true"></span>
+              <span data-bind="text: person.errors.email"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-md-1">
+            <label for="phone">Phone: </label>
+          </div>
+          <div class="col-md-11">
+            <input id="phone" type="text" placeholder="+380689999999"
+                   data-bind="value: person.phone">
+            <div class="alert alert-danger" role="alert"
+                 data-bind="visible: person.errors.phone">
+              <span class="glyphicon glyphicon-exclamation-sign" aria-hidden="true"></span>
+              <span data-bind="text: person.errors.phone"></span>
+            </div>
+          </div>
+        </div>
+
+        <input type="button" class="btn btn-primary" value="Add"
+               data-bind="click: addPerson">
+
+        <table class="table" data-bind="visible: showPeople()">
+          <thead>
+            <tr>
+              <td>Id</td>
+              <td>Name</td>
+              <td>Email</td>
+              <td>Phone</td>
+              <td>Action</td>
+            </tr>
+          </thead>
+          <tbody data-bind="foreach: people">
+            <tr>
+              <td data-bind="text: id"></td>
+              <td data-bind="text: name"></td>
+              <td data-bind="text: email"></td>
+              <td data-bind="text: phone"></td>
+              <td>
+                <input class="btn btn-primary" type="button" value="Delete"
+                       data-bind="click: $root.deletePerson">
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+      </div>
+    </div>
+
+
+    <!-- Bootstrap core JavaScript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script src="//oss.maxcdn.com/libs/jquery/1.10.2/jquery.min.js"></script>
+    <script src="//oss.maxcdn.com/libs/twitter-bootstrap/3.0.3/js/bootstrap.min.js"></script>
+    <script src="http://ajax.aspnetcdn.com/ajax/knockout/knockout-3.1.0.js"></script>
+    <script>
+      function Person(id, name, email, phone, errors) {
+        errors = errors || {};
+        this.id = id;
+        this.name = ko.observable(name);
+        this.email = ko.observable(email);
+        this.phone = ko.observable(phone);
+        this.errors = {
+          email: ko.observable('email' in errors ? errors.email : ''),
+          name: ko.observable('name' in errors ? errors.name : ''),
+          phone: ko.observable('phone' in errors ? errors.phone : '')
+        }
+      }
+
+      function RootModel() {
+        var self = this;
+
+        this.people = ko.observableArray([]);
+        this.person = new Person(null, 'Donna', 'donna@company.com', '+380689999999');
+        this.addPerson = addPerson;
+        this.deletePerson = deletePerson;
+        this.fetchPeople = fetchPeople;
+        this.showPeople = showPeople;
+
+        activate();
+
+        return self;
+
+        function activate() {
+          fetchPeople();
+        }
+
+        function addPerson() {
+          $.ajax('http://localhost:8000/people/', {
+            contentType: 'application/json',
+            data: JSON.stringify({
+              name: self.person.name(),
+              email: self.person.email(),
+              phone: self.person.phone()
+            }),
+            error: function(response) {
+              data = response.responseJSON;
+              self.person.name(data.name);
+              self.person.email(data.email);
+              self.person.phone(data.phone);
+              self.person.errors.name(data.errors.name || '');
+              self.person.errors.email(data.errors.email || '');
+              self.person.errors.phone(data.errors.phone || '');
+            },
+            type: 'post',
+            success: function() {
+              fetchPeople();
+              self.person.name('');
+              self.person.email('');
+              self.person.phone('');
+              self.person.errors.name('');
+              self.person.errors.email('');
+              self.person.errors.phone('');
+            }
+          })
+        }
+
+        function deletePerson(person) {
+          $.ajax('http://localhost:8000/person/' + person.id + '/', {
+            type: "delete",
+            success: function() {
+              self.people.remove(person);
+            }
+          })
+        }
+
+        function fetchPeople() {
+          $.getJSON('http://localhost:8000/people/', function(data) {
+            self.people([]);
+            data.forEach(function(person) {
+              self.people.push(new Person(person.id, person.name, person.email, person.phone));
+            });
+          })
+        }
+
+        function showPeople () {
+          return self.people().length > 0;
+        }
+      }
+
+      ko.applyBindings(new RootModel());
+    </script>
+  </body>
+</html>
