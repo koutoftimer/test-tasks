@@ -143,7 +143,7 @@
         }
 
         function addPerson() {
-          $.ajax('http://localhost:8000/people/', {
+          $.ajax('{{ request.host_url }}/people/', {
             contentType: 'application/json',
             data: JSON.stringify({
               name: self.person.name(),
@@ -173,7 +173,7 @@
         }
 
         function deletePerson(person) {
-          $.ajax('http://localhost:8000/person/' + person.id + '/', {
+          $.ajax('{{ request.host_url }}/person/' + person.id + '/', {
             type: "delete",
             success: function() {
               self.people.remove(person);
@@ -182,7 +182,7 @@
         }
 
         function fetchPeople() {
-          $.getJSON('http://localhost:8000/people/', function(data) {
+          $.getJSON('{{ request.host_url }}/people/', function(data) {
             self.people([]);
             data.forEach(function(person) {
               self.people.push(new Person(person.id, person.name, person.email, person.phone));
