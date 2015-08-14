@@ -1,3 +1,4 @@
+import argparse
 import functools
 import os
 from bottle import Bottle, run, abort, jinja2_view, static_file
@@ -93,5 +94,11 @@ def view(path='./'):
         abort(401, "Sorry, access denied.")
 
 
-run(app, host='localhost', port=8080)
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(
+        description='Serve files in current directory.')
+    parser.add_argument('-H', '--host', type=str, help='specify host for listening')
+    parser.add_argument('-P', '--port', type=int, help='specify port for listening')
+    args = parser.parse_args()
+    run(app, host=args.host or 'localhost', port=args.port or 8080)
 

@@ -15,3 +15,12 @@
 `$ python path/to/script/manager.py`
 
 в папке, которую нужно хостить.
+
+    usage: manager.py [-h] [-H HOST] [-P PORT]
+
+    Serve files in current directory.
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -H HOST, --host HOST  specify host for listening
+      -P PORT, --port PORT  specify port for listening
