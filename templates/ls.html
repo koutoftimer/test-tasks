@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ path }}</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+</head>
+<body>
+    
+    <p>Path: {{ path }}</p>
+    <ul class="items">
+        {% for item in items %}
+        <li>
+            <a class="{% if item.is_file %}file{% else %}dir{% endif %}" {% if item.new_tab %}target="_blank"{% endif %} href="{{ item.link }}">
+               <span class="glyphicon {% if item.is_file %}glyphicon-file{% else %}glyphicon-folder-open{% endif %}"></span>
+               {{ item.name }}
+            </a>
+        </li>
+        {% endfor %}
+    </ul>
+
+</body>
+</html>
