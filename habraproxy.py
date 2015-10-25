@@ -1,50 +1,43 @@
 # ~*~ encoding: utf-8 ~*~
 import argparse
+import re
 import requests
+from urlparse import urljoin, urlparse
 
 from bs4 import BeautifulSoup
-from flask import Flask, Response, stream_with_context
+from flask import Flask, Response, stream_with_context, request
 
 
 app = Flask(__name__)
 app.HOST = 'http://habrahabr.ru'
+app.DOMAIN = None
 
 
-def processed(line):
-    """
-    Recives single text node for processing.
-    """
-    words = []
-    for word in line.split(' '):
-        if len(word) == 6:
-            word += u'™'
-        words.append(word)
-    return ' '.join(words)
+WORD_RE = re.compile(r'(?P<prefix>^|\W)(?P<word>\w{6})(?P<suffix>$|\W)',
+                     re.UNICODE)
+WORD_REPLACEMENT = u'\g<prefix>\g<word>™\g<suffix>'
 
 
 def replace(text):
-    """
-    Recives string of raw html code and returns html code with processed text
-    nodes.
-    """
     html = BeautifulSoup(text, 'html.parser')
-    #: Retrive text nodes.
     for line in html.find_all(text=True):
-        line.replace_with(processed(line))
+        line.replace_with(WORD_RE.sub(WORD_REPLACEMENT, line))
     return str(html)
 
 
 @app.route('/<path:url>')
 def home(url):
-    #: Downloading all content can be inefficient in case of large binnary
-    #: files.
-    req = requests.get('%s/%s' % (app.HOST, url), stream=True)
-    #: Ommit processign for binary files, etc.
-    if 'text/html' not in req.headers['content-type']:
-        return Response(stream_with_context(req.iter_content()),
-                        content_type=req.headers['content-type'])
-    #: Process html page.
-    return Response(replace(req.text))
+    headers = {k: v for k, v in request.headers if v}
+    headers.update({'Host': app.DOMAIN})
+    response = requests.get(
+        urljoin(app.HOST, url), stream=True, headers=headers,
+        cookies=request.cookies)
+
+    if 'text/html' not in response.headers['content-type'] or \
+            response.status_code >= 300:
+        return Response(stream_with_context(response.iter_content()),
+                        content_type=response.headers['content-type'])
+    return replace(response.text)
 
 
 @app.route('/')
@@ -61,5 +54,6 @@ if __name__ == '__main__':
     if args.host:
         app.HOST = args.host
 
+    app.DOMAIN = urlparse(app.HOST).netloc
     app.run()
 
