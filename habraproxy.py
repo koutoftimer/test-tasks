@@ -2,6 +2,8 @@
 import argparse
 import re
 import requests
+
+from urllib import urlencode
 from urlparse import urljoin, urlparse
 
 from bs4 import BeautifulSoup
@@ -29,9 +31,9 @@ def replace(text):
 def home(url):
     headers = {k: v for k, v in request.headers if v}
     headers.update({'Host': app.DOMAIN})
+    url = ''.join([urljoin(app.HOST, url), urlencode(request.args)])
     response = requests.get(
-        urljoin(app.HOST, url), stream=True, headers=headers,
-        cookies=request.cookies)
+        url, stream=True, headers=headers, cookies=request.cookies)
 
     if 'text/html' not in response.headers['content-type'] or \
             response.status_code >= 300:
