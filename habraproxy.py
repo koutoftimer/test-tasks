@@ -1,12 +1,12 @@
 # ~*~ encoding: utf-8 ~*~
 import argparse
+import bs4
 import re
 import requests
 
 from urllib import urlencode
 from urlparse import urljoin, urlparse
 
-from bs4 import BeautifulSoup
 from flask import Flask, Response, stream_with_context, request
 
 
@@ -15,16 +15,28 @@ app.HOST = 'http://habrahabr.ru'
 app.DOMAIN = None
 
 
+ALLOWED_CONTENT_TYPES = ('text/html', 'text/xml', 'text/xhtml', 'text/plain')
 WORD_RE = re.compile(r'(?P<prefix>^|\W)(?P<word>\w{6})(?P<suffix>$|\W)',
                      re.UNICODE)
 WORD_REPLACEMENT = u'\g<prefix>\g<word>™\g<suffix>'
 
 
+def html_content_type(content_type):
+    """
+    Determine whether `content_type` is subset of xml or plain text.
+
+    :type content_type: str
+    :rtype: bool
+    """
+    return any(map(content_type.count, ALLOWED_CONTENT_TYPES))
+
+
 def replace(text):
-    html = BeautifulSoup(text, 'html.parser')
+    html = bs4.BeautifulSoup(text, 'html5lib')
     for line in html.find_all(text=True):
-        line.replace_with(WORD_RE.sub(WORD_REPLACEMENT, line))
-    return str(html)
+        if not isinstance(line, bs4.element.PreformattedString):
+            line.replace_with(WORD_RE.sub(WORD_REPLACEMENT, line))
+    return html.prettify(formatter='html')
 
 
 @app.route('/<path:url>')
@@ -35,7 +47,7 @@ def home(url):
     response = requests.get(
         url, stream=True, headers=headers, cookies=request.cookies)
 
-    if 'text/html' not in response.headers['content-type'] or \
+    if not html_content_type(response.headers['content-type']) or \
             response.status_code >= 300:
         return Response(stream_with_context(response.iter_content()),
                         content_type=response.headers['content-type'])
