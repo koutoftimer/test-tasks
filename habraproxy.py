@@ -4,9 +4,7 @@ import bs4
 import re
 import requests
 
-from urllib import urlencode
-from urlparse import urljoin, urlparse
-
+from six.moves.urllib.parse import urlencode, urljoin, urlparse
 from flask import Flask, Response, stream_with_context, request
 
 
@@ -70,4 +68,3 @@ if __name__ == '__main__':
 
     app.DOMAIN = urlparse(app.HOST).netloc
     app.run()
-

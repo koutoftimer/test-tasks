@@ -1,5 +1,6 @@
-beautifulsoup4
-flask
-requests
-pytest
-html5lib
+beautifulsoup4==4.4.1
+Flask==0.10.1
+requests==2.8.1
+pytest==2.8.2
+html5lib==0.9999999
+six==1.10.0
