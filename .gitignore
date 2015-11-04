@@ -10,6 +10,8 @@ __pycache__/
 # Distribution / packaging
 .Python
 venv/
+env/
+Python-3.5.0/
 build/
 develop-eggs/
 dist/

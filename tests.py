@@ -64,6 +64,17 @@ HTML_WITH_BUTTON_TAG = '''<html lang="en">
 </html>'''
 
 
+HTML_WITH_NOSCRIPT_TAG = '''<html lang="en">
+ <head>
+ </head>
+ <body>
+  <noscript>
+   abcdef
+  </noscript>
+ </body>
+</html>'''
+
+
 class TestReplace(object):
     def test_doctype(self):
         assert replace(HTML_WITH_DOCTYPE) == HTML_WITH_DOCTYPE
@@ -79,3 +90,6 @@ class TestReplace(object):
 
     def test_button_tag(self):
         assert replace(HTML_WITH_BUTTON_TAG) == HTML_WITH_BUTTON_TAG
+
+    def test_noscript_tag(self):
+        assert replace(HTML_WITH_NOSCRIPT_TAG) == HTML_WITH_NOSCRIPT_TAG
