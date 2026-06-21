@@ -94,7 +94,7 @@ class CommentCreateSerializer(serializers.Serializer):
         try:
             store = CaptchaStore.objects.get(
                 hashkey=attrs["captcha_key"],
-                response=attrs["captcha_value"],
+                response__iexact=attrs["captcha_value"],
                 expiration__gt=timezone.now(),
             )
             store.delete()

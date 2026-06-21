@@ -51,6 +51,7 @@
 <script setup>
 import { inject, reactive, ref } from 'vue'
 import { useComments } from '../composables/useComments.js'
+import { resizeImage } from '../composables/resizeImage.js'
 import HtmlToolbar from './HtmlToolbar.vue'
 
 const emit = defineEmits(['comment-created', 'refresh-captcha'])
@@ -91,7 +92,7 @@ function validateCaptcha() {
   else errors.captcha_value = ''
 }
 
-function handleFileChange(e) {
+async function handleFileChange(e) {
   const file = e.target.files[0]
   if (!file) { form.file = null; fileError.value = ''; return }
   const ext = file.name.split('.').pop().toLowerCase()
@@ -103,8 +104,13 @@ function handleFileChange(e) {
     fileError.value = 'Text file must be under 100KB'
     e.target.value = ''; form.file = null; return
   }
-  fileError.value = ''
-  form.file = file
+  try {
+    form.file = ext === 'txt' ? file : await resizeImage(file)
+    fileError.value = ''
+  } catch {
+    fileError.value = 'Failed to process image'
+    form.file = null
+  }
 }
 
 function insertTag(tag) {
@@ -128,12 +134,16 @@ function insertTag(tag) {
   form.text = form.text.substring(0, start) + tagOpen + selected + tagClose + form.text.substring(end)
 }
 
-function handlePreview() {
+async function handlePreview() {
+  let previewFile = form.file
+  if (previewFile && previewFile.type.startsWith('image/')) {
+    previewFile = await resizeImage(previewFile)
+  }
   openPreview({
     username: form.username || 'Anonymous',
     text: form.text,
-    file: form.file ? URL.createObjectURL(form.file) : null,
-    fileType: form.file ? form.file.name.split('.').pop().toLowerCase() : null,
+    file: previewFile ? URL.createObjectURL(previewFile) : null,
+    fileType: previewFile ? previewFile.name.split('.').pop().toLowerCase() : null,
   })
 }
 

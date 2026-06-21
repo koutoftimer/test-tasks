@@ -5,3 +5,6 @@ venv/
 .env
 dist/
 .venv/
+media/
+static/
+
