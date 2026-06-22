@@ -2,7 +2,7 @@
   <div class="comment-item" :class="{ 'has-replies': repliesCount > 0 }">
     <div class="comment-card">
       <div class="comment-header">
-        <img v-if="comment.profile?.avatar" :src="comment.profile.avatar" class="comment-avatar" />
+        <img v-if="comment.profile?.avatar" :src="mediaUrl(comment.profile.avatar)" class="comment-avatar" />
         <svg v-else class="comment-avatar comment-avatar-placeholder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
         <span class="comment-author">{{ comment.profile ? comment.profile.username : 'Anonymous' }}</span>
         <a v-if="comment.profile?.homepage" :href="comment.profile.homepage" class="comment-homepage" target="_blank" rel="noopener" title="Homepage">
@@ -12,8 +12,8 @@
       </div>
       <div class="comment-text" v-html="sanitizeHtml(comment.text)"></div>
       <div v-if="comment.file" class="comment-file">
-        <img v-if="comment.file_type === 'image'" :src="comment.file" alt="Attachment" class="comment-image" @click="store.openLightbox(comment.file)" />
-        <a v-else :href="comment.file" target="_blank" class="file-link" download>Download file</a>
+        <img v-if="comment.file_type === 'image'" :src="mediaUrl(comment.file)" alt="Attachment" class="comment-image" @click="store.openLightbox(mediaUrl(comment.file))" />
+        <a v-else :href="mediaUrl(comment.file)" target="_blank" class="file-link" download>Download file</a>
       </div>
       <div class="comment-actions">
         <span v-if="voteError" class="vote-error">{{ voteError }}</span>
@@ -60,6 +60,7 @@ import { computed, ref } from 'vue'
 import { useAuthStore } from '../stores/auth.js'
 import { useCommentStore } from '../stores/comment.js'
 import CommentForm from './CommentForm.vue'
+import { mediaUrl } from '../utils/media.js'
 
 const props = defineProps({
   comment: Object,

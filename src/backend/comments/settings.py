@@ -153,4 +153,4 @@ ALLOWED_HTML_TAGS = {
     "strong": [],
 }
 
-API_BASE_URL = 'http://api.comments:8002'
+API_BASE_URL = os.environ.get("API_BASE_URL", "http://api.comments:8002")
