@@ -10,6 +10,7 @@ const authApi = axios.create({
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: null,
+    profileId: null,
     accessToken: localStorage.getItem('access_token') || null,
     refreshToken: localStorage.getItem('refresh_token') || null,
   }),
@@ -30,6 +31,7 @@ export const useAuthStore = defineStore('auth', {
       this.accessToken = null
       this.refreshToken = null
       this.user = null
+      this.profileId = null
       localStorage.removeItem('access_token')
       localStorage.removeItem('refresh_token')
     },
@@ -51,6 +53,7 @@ export const useAuthStore = defineStore('auth', {
           headers: { Authorization: `Bearer ${this.accessToken}` },
         })
         this.user = res.data
+        this.profileId = res.data.profile_id
       } catch {
         this.clearTokens()
       }
@@ -58,6 +61,24 @@ export const useAuthStore = defineStore('auth', {
 
     logout() {
       this.clearTokens()
+    },
+
+    async updateProfile(data) {
+      const formData = new FormData()
+      if (data.email !== undefined) formData.append('email', data.email)
+      if (data.homepage !== undefined) formData.append('homepage', data.homepage)
+      if (data.avatar) formData.append('avatar', data.avatar)
+
+      const res = await authApi.patch(`/profile/${this.profileId}/`, formData, {
+        headers: {
+          Authorization: `Bearer ${this.accessToken}`,
+          'Content-Type': 'multipart/form-data',
+        },
+      })
+      if (this.user && res.data.email !== undefined) {
+        this.user.email = res.data.email
+      }
+      return res.data
     },
   },
 })

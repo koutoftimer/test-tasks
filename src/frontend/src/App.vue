@@ -2,8 +2,27 @@
   <div class="app">
     <div class="container">
       <div class="auth-bar">
-        <span v-if="auth.user" class="auth-user">{{ auth.user.username }}</span>
-        <button v-if="auth.user" class="btn-logout" @click="handleLogout">Logout</button>
+        <template v-if="auth.user">
+          <span class="auth-user">{{ auth.user.username }}</span>
+          <button class="btn-edit-profile" @click="showProfileForm = !showProfileForm">Edit profile</button>
+          <button class="btn-logout" @click="handleLogout">Logout</button>
+          <div v-if="showProfileForm" class="profile-form">
+            <div class="profile-form-fields">
+              <label>Email</label>
+              <input v-model="profileEmail" type="email" />
+              <label>Homepage</label>
+              <input v-model="profileHomepage" type="url" placeholder="https://" />
+              <label>Avatar</label>
+              <input type="file" accept="image/*" @change="onAvatarChange" />
+              <div class="profile-form-buttons">
+                <button class="btn-save" @click="handleUpdateProfile">Save</button>
+                <button class="btn-cancel" @click="showProfileForm = false">Cancel</button>
+              </div>
+              <div v-if="profileError" class="auth-error">{{ profileError }}</div>
+              <div v-if="profileSuccess" class="profile-success">{{ profileSuccess }}</div>
+            </div>
+          </div>
+        </template>
         <template v-else>
           <form class="auth-form" @submit.prevent="handleAuth">
             <input v-model="authUsername" placeholder="Username" required />
@@ -33,7 +52,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { useAuthStore } from './stores/auth.js'
 import { useCommentStore } from './stores/comment.js'
 import Lightbox from './components/Lightbox.vue'
@@ -47,11 +66,23 @@ const authEmail = ref('')
 const authPassword = ref('')
 const isRegister = ref(false)
 const authError = ref('')
+const showProfileForm = ref(false)
+const profileEmail = ref('')
+const profileHomepage = ref('')
+const profileAvatar = ref(null)
+const profileError = ref('')
+const profileSuccess = ref('')
 
 onMounted(() => {
   store.fetchComments()
   if (auth.accessToken) {
     auth.fetchUser()
+  }
+})
+
+watch(() => auth.user, (user) => {
+  if (user) {
+    profileEmail.value = user.email || ''
   }
 })
 
@@ -81,6 +112,26 @@ function handleLogout() {
   auth.logout()
   store.fetchComments()
   store.refreshCurrentDetail()
+}
+
+function onAvatarChange(e) {
+  profileAvatar.value = e.target.files[0] || null
+}
+
+async function handleUpdateProfile() {
+  profileError.value = ''
+  profileSuccess.value = ''
+  try {
+    await auth.updateProfile({
+      email: profileEmail.value,
+      homepage: profileHomepage.value,
+      avatar: profileAvatar.value,
+    })
+    profileSuccess.value = 'Profile updated'
+    setTimeout(() => { profileSuccess.value = '' }, 3000)
+  } catch (err) {
+    profileError.value = err.response?.data?.detail || 'Failed to update profile'
+  }
 }
 </script>
 
@@ -157,4 +208,26 @@ a:hover {
 }
 .btn-toggle-auth:hover { text-decoration: underline; }
 .auth-error { width: 100%; color: #d93025; font-size: 13px; }
+.btn-edit-profile {
+  background: none; border: 1px solid #d0d0d0; color: #555;
+  padding: 6px 14px; border-radius: 3px; font-size: 13px;
+}
+.btn-edit-profile:hover { background: #f5f5f5; }
+.profile-form { width: 100%; padding: 12px; background: #f8f9fa; border-radius: 4px; margin-top: 8px; }
+.profile-form-fields { display: flex; flex-direction: column; gap: 8px; }
+.profile-form-fields label { font-size: 12px; font-weight: 600; color: #555; }
+.profile-form-fields input { padding: 6px 10px; border: 1px solid #d0d0d0; border-radius: 3px; font-size: 13px; font-family: inherit; }
+.profile-form-fields input:focus { outline: none; border-color: #1a73e8; }
+.profile-form-buttons { display: flex; gap: 8px; margin-top: 4px; }
+.btn-save {
+  background: #1a73e8; color: #fff; border: none; padding: 6px 14px;
+  border-radius: 3px; font-size: 13px; font-weight: 500;
+}
+.btn-save:hover { background: #1557b0; }
+.btn-cancel {
+  background: none; border: 1px solid #d0d0d0; color: #555;
+  padding: 6px 14px; border-radius: 3px; font-size: 13px;
+}
+.btn-cancel:hover { background: #f5f5f5; }
+.profile-success { width: 100%; color: #188038; font-size: 13px; }
 </style>

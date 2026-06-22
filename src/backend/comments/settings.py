@@ -119,7 +119,10 @@ SIMPLE_JWT = {
 DJOSER = {
     "LOGIN_FIELD": "username",
     "USER_CREATE_PASSWORD_RETYPE": False,
-    "SERIALIZERS": {},
+    "SERIALIZERS": {
+        "user": "comments.serializers.UserSerializer",
+        "current_user": "comments.serializers.UserSerializer",
+    },
 }
 
 # CORS

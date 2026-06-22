@@ -8,6 +8,7 @@ from . import views
 
 router = DefaultRouter()
 router.register(r"comments", views.CommentViewSet, basename="comment")
+router.register(r"profile", views.ProfileViewSet, basename="profile")
 
 urlpatterns = [
     path("admin/", admin.site.urls),
