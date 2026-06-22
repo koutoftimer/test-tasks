@@ -3,7 +3,7 @@
     <div class="container">
       <div class="auth-bar">
         <span v-if="auth.user" class="auth-user">{{ auth.user.username }}</span>
-        <button v-if="auth.user" class="btn-logout" @click="auth.logout()">Logout</button>
+        <button v-if="auth.user" class="btn-logout" @click="handleLogout">Logout</button>
         <template v-else>
           <form class="auth-form" @submit.prevent="handleAuth">
             <input v-model="authUsername" placeholder="Username" required />
@@ -68,11 +68,19 @@ async function handleAuth() {
     authEmail.value = ''
     authPassword.value = ''
     isRegister.value = false
+    store.fetchComments()
+    store.refreshCurrentDetail()
   } catch (err) {
     authError.value = err.response?.data?.detail
       || err.response?.data?.map?.(e => e).join(', ')
       || 'Authentication failed'
   }
+}
+
+function handleLogout() {
+  auth.logout()
+  store.fetchComments()
+  store.refreshCurrentDetail()
 }
 </script>
 

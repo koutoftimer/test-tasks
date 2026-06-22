@@ -65,13 +65,12 @@ export const useCommentStore = defineStore('comment', {
       this.currentLoading = true
       this.currentError = null
       try {
-        let found = this.comments.find(c => c.id === id)
-        if (!found) {
-          found = await this.fetchComment(id)
-          this.comments.unshift(found)
-        }
-        found.replies = await this.fetchReplies(id)
-        this.currentComment = found
+        const [commentData, replies] = await Promise.all([
+          this.fetchComment(id),
+          this.fetchReplies(id),
+        ])
+        commentData.replies = replies
+        this.currentComment = commentData
       } catch (err) {
         this.currentError = err.message || 'Failed to load comment'
       } finally {
@@ -178,6 +177,12 @@ export const useCommentStore = defineStore('comment', {
 
     closePreview() {
       this.previewData = null
+    },
+
+    refreshCurrentDetail() {
+      if (this.currentComment) {
+        this.fetchCommentDetail(this.currentComment.id)
+      }
     },
   },
 })

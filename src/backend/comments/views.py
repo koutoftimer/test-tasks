@@ -1,5 +1,6 @@
 from captcha.helpers import captcha_image_url
 from captcha.models import CaptchaStore
+from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import BooleanField, Count, Exists, OuterRef, Q, Value
 from rest_framework import status, viewsets
 from rest_framework.decorators import action, api_view
@@ -80,7 +81,10 @@ class CommentViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["get"])
     def replies(self, request, pk=None):
-        comment = self.get_object()
+        try:
+            comment = Comment.objects.get(pk=pk)
+        except ObjectDoesNotExist:
+            return Response({"error": "Comment not found."}, status=status.HTTP_404_NOT_FOUND)
         replies = comment.replies.all().order_by("id")
         replies = self._annotate_votes(replies)
         serializer = CommentDetailSerializer(replies, many=True, context=self.get_serializer_context())
@@ -88,7 +92,10 @@ class CommentViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post", "delete"], permission_classes=[IsAuthenticated])
     def vote(self, request, pk=None):
-        comment = self.get_object()
+        try:
+            comment = Comment.objects.get(pk=pk)
+        except ObjectDoesNotExist:
+            return Response({"error": "Comment not found."}, status=status.HTTP_404_NOT_FOUND)
         user = request.user
 
         if request.method == "DELETE":
