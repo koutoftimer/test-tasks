@@ -11,6 +11,7 @@
 import { onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useCommentStore } from '../stores/comment.js'
+import { wasPreviouslyOnList } from '../router/index.js'
 import CommentItem from '../components/CommentItem.vue'
 
 const route = useRoute()
@@ -22,7 +23,7 @@ onMounted(() => {
 })
 
 function goBack() {
-  if (window.history.length > 1) {
+  if (wasPreviouslyOnList()) {
     router.back()
   } else {
     router.replace({ name: 'list' })

@@ -4,7 +4,7 @@ from django.utils import timezone
 from djoser.serializers import UserSerializer as BaseUserSerializer
 from rest_framework import serializers
 
-from .models import Comment, Profile
+from .models import Comment, CommentAttachment, Profile
 
 
 class ProfileSerializer(serializers.ModelSerializer):
@@ -27,6 +27,19 @@ class ProfileDetailSerializer(ProfileSerializer):
         fields = ProfileSerializer.Meta.fields + ["email"]
 
 
+class CommentAttachmentSerializer(serializers.ModelSerializer):
+    file = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CommentAttachment
+        fields = ["id", "file", "file_type"]
+
+    def get_file(self, obj):
+        if obj.file:
+            return f"{settings.API_BASE_URL}{obj.file.url}"
+        return None
+
+
 class CommentListSerializer(serializers.ModelSerializer):
     profile = ProfileSerializer(read_only=True, allow_null=True)
     reply_count = serializers.SerializerMethodField()
@@ -34,7 +47,7 @@ class CommentListSerializer(serializers.ModelSerializer):
     dislike_count = serializers.SerializerMethodField()
     is_liked = serializers.SerializerMethodField()
     is_disliked = serializers.SerializerMethodField()
-    file = serializers.SerializerMethodField()
+    attachment = serializers.SerializerMethodField()
 
     class Meta:
         model = Comment
@@ -44,8 +57,7 @@ class CommentListSerializer(serializers.ModelSerializer):
             "text",
             "parent",
             "created_at",
-            "file",
-            "file_type",
+            "attachment",
             "reply_count",
             "like_count",
             "dislike_count",
@@ -72,9 +84,10 @@ class CommentListSerializer(serializers.ModelSerializer):
     def get_is_disliked(self, obj):
         return getattr(obj, "is_disliked", False)
 
-    def get_file(self, obj):
-        if obj.file:
-            return f"{settings.API_BASE_URL}{obj.file.url}"
+    def get_attachment(self, obj):
+        att = obj.attachments.first()
+        if att:
+            return CommentAttachmentSerializer(att).data
         return None
 
 
@@ -85,7 +98,7 @@ class CommentDetailSerializer(serializers.ModelSerializer):
     dislike_count = serializers.SerializerMethodField()
     is_liked = serializers.SerializerMethodField()
     is_disliked = serializers.SerializerMethodField()
-    file = serializers.SerializerMethodField()
+    attachment = serializers.SerializerMethodField()
 
     class Meta:
         model = Comment
@@ -95,8 +108,7 @@ class CommentDetailSerializer(serializers.ModelSerializer):
             "text",
             "parent",
             "created_at",
-            "file",
-            "file_type",
+            "attachment",
             "replies",
             "like_count",
             "dislike_count",
@@ -128,9 +140,10 @@ class CommentDetailSerializer(serializers.ModelSerializer):
     def get_is_disliked(self, obj):
         return getattr(obj, "is_disliked", False)
 
-    def get_file(self, obj):
-        if obj.file:
-            return f"{settings.API_BASE_URL}{obj.file.url}"
+    def get_attachment(self, obj):
+        att = obj.attachments.first()
+        if att:
+            return CommentAttachmentSerializer(att).data
         return None
 
 
@@ -209,9 +222,14 @@ class CommentCreateSerializer(serializers.Serializer):
             profile=profile,
             text=text,
             parent=parent,
-            file=file,
-            file_type=file_type,
         )
+
+        if file:
+            CommentAttachment.objects.create(
+                comment=comment,
+                file=file,
+                file_type=file_type,
+            )
 
         return comment
 

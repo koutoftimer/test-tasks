@@ -58,7 +58,7 @@ class CommentViewSet(viewsets.ModelViewSet):
         )
 
     def get_queryset(self):
-        qs = Comment.objects.filter(parent=None).select_related("profile__user")
+        qs = Comment.objects.filter(parent=None).select_related("profile__user").prefetch_related("attachments")
         qs = self._annotate_votes(qs)
         sort_by = self.request.query_params.get("sort", "-id")
         allowed_sorts = {

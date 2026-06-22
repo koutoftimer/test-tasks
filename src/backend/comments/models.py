@@ -59,11 +59,46 @@ def resize_image(file_obj, width, height):
         return ContentFile(output.getvalue(), name=file_obj.name)
 
 
-class Comment(models.Model):
-    class FileType(models.TextChoices):
-        IMAGE = "image", "Image"
-        TEXT = "text", "Text file"
+class FileType(models.TextChoices):
+    IMAGE = "image", "Image"
+    TEXT = "text", "Text file"
 
+
+def attachment_file_path(instance, filename):
+    _, ext = os.path.splitext(filename)
+    name = f"{uuid.uuid4().hex}{ext.lower()}"
+    return os.path.join("uploads", datetime.now().strftime("%Y/%m/%d"), name)
+
+
+class CommentAttachment(models.Model):
+    comment = models.ForeignKey(
+        "Comment", on_delete=models.CASCADE, related_name="attachments"
+    )
+    file = models.FileField(
+        upload_to=attachment_file_path, null=True, blank=True, max_length=500
+    )
+    file_type = models.CharField(
+        max_length=10, choices=FileType.choices, null=True, blank=True
+    )
+    id = models.BigAutoField(primary_key=True)
+
+    class Meta:
+        verbose_name = "Comment Attachment"
+        verbose_name_plural = "Comment Attachments"
+        ordering = ["id"]
+
+    def __str__(self):
+        return f"Attachment #{self.pk} for Comment #{self.comment_id}"
+
+    def save(self, *args, **kwargs):
+        is_image = self.file and self.file_type == FileType.IMAGE
+        fresh_upload = is_image and isinstance(self.file.file, UploadedFile)
+        if fresh_upload:
+            self.file = resize_image(self.file, *settings.MAX_IMAGE_SIZE)
+        super().save(*args, **kwargs)
+
+
+class Comment(models.Model):
     profile = models.ForeignKey(
         Profile, on_delete=models.CASCADE, related_name="comments", null=True, blank=True
     )
@@ -77,14 +112,6 @@ class Comment(models.Model):
         db_index=True,
     )
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
-    file = models.FileField(
-        # it is safe, problem in django's type definition that doens't define
-        # Union[str, Callable[[Any, Any], str]] or something similar
-        upload_to=comment_file_path, null=True, blank=True, max_length=500
-    )
-    file_type = models.CharField(
-        max_length=10, choices=FileType.choices, null=True, blank=True
-    )
 
     class Meta:
         verbose_name = "Comment"
@@ -98,10 +125,6 @@ class Comment(models.Model):
 
     def save(self, *args, **kwargs):
         self.strip_unallowed_html()
-        is_image = self.file and self.file_type == self.FileType.IMAGE
-        fresh_upload = is_image and isinstance(self.file.file, UploadedFile)
-        if fresh_upload:
-            self.file = resize_image(self.file, *settings.MAX_IMAGE_SIZE)
         super().save(*args, **kwargs)
 
     def strip_unallowed_html(self):

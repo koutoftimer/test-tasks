@@ -14,4 +14,14 @@ const router = createRouter({
   routes,
 })
 
+let previousRouteName = null
+
+router.beforeEach((to, from) => {
+  previousRouteName = from.name
+})
+
+export function wasPreviouslyOnList() {
+  return previousRouteName === 'list'
+}
+
 export default router
