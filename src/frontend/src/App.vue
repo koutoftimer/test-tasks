@@ -11,9 +11,15 @@
               <label>Email</label>
               <input v-model="profileEmail" type="email" />
               <label>Homepage</label>
-              <input v-model="profileHomepage" type="url" placeholder="https://" />
+              <div class="profile-homepage-wrap">
+                <input v-model="profileHomepage" type="url" placeholder="https://" />
+                <a v-if="auth.profile?.homepage" :href="auth.profile.homepage" target="_blank" class="profile-homepage-link" title="Open homepage">&#8599;</a>
+              </div>
               <label>Avatar</label>
-              <input type="file" accept="image/*" @change="onAvatarChange" />
+              <div class="profile-avatar-wrap">
+                <img v-if="auth.profile?.avatar" :src="auth.profile.avatar" alt="Avatar" class="profile-avatar-preview" />
+                <input type="file" accept="image/*" @change="onAvatarChange" />
+              </div>
               <div class="profile-form-buttons">
                 <button class="btn-save" @click="handleUpdateProfile">Save</button>
                 <button class="btn-cancel" @click="showProfileForm = false">Cancel</button>
@@ -86,6 +92,12 @@ watch(() => auth.user, (user) => {
     profileEmail.value = user.email || ''
   }
 })
+
+watch(() => auth.profile, (profile) => {
+  if (profile) {
+    profileHomepage.value = profile.homepage || ''
+  }
+}, { immediate: true })
 
 async function handleAuth() {
   authError.value = ''
@@ -232,4 +244,10 @@ a:hover {
 }
 .btn-cancel:hover { background: #f5f5f5; }
 .profile-success { width: 100%; color: #188038; font-size: 13px; }
+.profile-homepage-wrap { display: flex; align-items: center; gap: 6px; }
+.profile-homepage-wrap input { flex: 1; }
+.profile-homepage-link { font-size: 16px; color: #1a73e8; text-decoration: none; }
+.profile-homepage-link:hover { text-decoration: underline; }
+.profile-avatar-wrap { display: flex; align-items: center; gap: 10px; }
+.profile-avatar-preview { width: 24px; height: 24px; border-radius: 3px; object-fit: cover; }
 </style>

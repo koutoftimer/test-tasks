@@ -9,6 +9,7 @@ const authApi = axios.create({
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: null,
+    profile: null,
     profileId: null,
     accessToken: localStorage.getItem('access_token') || null,
     refreshToken: localStorage.getItem('refresh_token') || null,
@@ -30,6 +31,7 @@ export const useAuthStore = defineStore('auth', {
       this.accessToken = null
       this.refreshToken = null
       this.user = null
+      this.profile = null
       this.profileId = null
       localStorage.removeItem('access_token')
       localStorage.removeItem('refresh_token')
@@ -53,8 +55,21 @@ export const useAuthStore = defineStore('auth', {
         })
         this.user = res.data
         this.profileId = res.data.profile_id
+        await this.fetchProfile()
       } catch {
         this.clearTokens()
+      }
+    },
+
+    async fetchProfile() {
+      if (!this.accessToken || !this.profileId) return
+      try {
+        const res = await authApi.get(`/profile/${this.profileId}/`, {
+          headers: { Authorization: `Bearer ${this.accessToken}` },
+        })
+        this.profile = res.data
+      } catch {
+        // ignore
       }
     },
 
@@ -77,6 +92,7 @@ export const useAuthStore = defineStore('auth', {
       if (this.user && res.data.email !== undefined) {
         this.user.email = res.data.email
       }
+      this.profile = res.data
       return res.data
     },
   },
