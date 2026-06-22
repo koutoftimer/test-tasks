@@ -4,6 +4,7 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 from rest_framework import serializers
 
+from .constants import API_BASE_URL
 from .models import Comment, Profile
 
 
@@ -19,6 +20,7 @@ class ProfileSerializer(serializers.ModelSerializer):
 class CommentListSerializer(serializers.ModelSerializer):
     profile = ProfileSerializer(read_only=True)
     replies = serializers.SerializerMethodField()
+    file = serializers.SerializerMethodField()
 
     class Meta:
         model = Comment
@@ -32,6 +34,11 @@ class CommentListSerializer(serializers.ModelSerializer):
             "file_type",
             "replies",
         ]
+
+    def get_file(self, obj):
+        if obj.file:
+            return f"{API_BASE_URL}{obj.file.url}"
+        return None
 
     def get_replies(self, obj):
         replies = obj.replies.all()

@@ -1,11 +1,20 @@
 import io
+import os
 import re
+import uuid
+from datetime import datetime
 
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.files.base import ContentFile
 from django.db import models
 from PIL import Image
+
+
+def comment_file_path(instance, filename):
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    name = f"{uuid.uuid4().hex}{'.' + ext if ext else ''}"
+    return os.path.join("uploads", datetime.now().strftime("%Y/%m/%d"), name)
 
 
 class Profile(models.Model):
@@ -56,7 +65,7 @@ class Comment(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     file = models.FileField(
-        upload_to="comment_files/", null=True, blank=True, max_length=500
+        upload_to=comment_file_path, null=True, blank=True, max_length=500
     )
     file_type = models.CharField(
         max_length=10, choices=FILE_TYPE_CHOICES, null=True, blank=True
