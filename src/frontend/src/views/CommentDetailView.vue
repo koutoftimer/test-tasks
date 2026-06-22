@@ -1,6 +1,6 @@
 <template>
   <div>
-    <button class="btn-back" @click="router.back()">← Back to all comments</button>
+    <button class="btn-back" @click="goBack">← Back to all comments</button>
     <div v-if="store.currentLoading" class="loading">Loading...</div>
     <div v-else-if="store.currentError" class="error-message">{{ store.currentError }}</div>
     <CommentItem v-else-if="store.currentComment" :comment="store.currentComment" :depth="0" :show-replies="true" />
@@ -20,6 +20,14 @@ const store = useCommentStore()
 onMounted(() => {
   store.fetchCommentDetail(Number(route.params.id))
 })
+
+function goBack() {
+  if (window.history.length > 1) {
+    router.back()
+  } else {
+    router.replace({ name: 'list' })
+  }
+}
 </script>
 
 <style scoped>
