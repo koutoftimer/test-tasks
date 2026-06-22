@@ -14,9 +14,15 @@ RUN pip install --no-cache-dir -r /requirements/prod-frozen.txt
 WORKDIR /app
 COPY src/backend/ /app/
 
-RUN python manage.py migrate
 RUN python manage.py collectstatic --noinput
+
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 EXPOSE 8002
 
+# Use the entrypoint to handle migrations
+ENTRYPOINT ["/entrypoint.sh"]
+
+# CMD is passed as arguments to the entrypoint (the "$@" part)
 CMD ["gunicorn", "comments.wsgi:application", "--bind", "0.0.0.0:8002", "--workers", "4"]
