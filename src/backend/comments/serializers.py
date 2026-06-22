@@ -1,10 +1,10 @@
 import re
 
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.utils import timezone
 from rest_framework import serializers
 
-from .constants import API_BASE_URL
 from .models import Comment, Profile
 
 
@@ -37,7 +37,7 @@ class CommentListSerializer(serializers.ModelSerializer):
 
     def get_file(self, obj):
         if obj.file:
-            return f"{API_BASE_URL}{obj.file.url}"
+            return f"{settings.API_BASE_URL}{obj.file.url}"
         return None
 
     def get_replies(self, obj):

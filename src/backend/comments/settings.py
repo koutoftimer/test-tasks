@@ -117,3 +117,5 @@ ALLOWED_HTML_TAGS = {
     "i": [],
     "strong": [],
 }
+
+API_BASE_URL = 'http://api.comments:8002'

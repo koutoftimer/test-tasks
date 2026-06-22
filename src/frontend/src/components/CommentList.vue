@@ -9,7 +9,6 @@
         :key="comment.id"
         :comment="comment"
         :depth="0"
-        @reply="$emit('reply', $event)"
       />
     </div>
   </div>
@@ -19,7 +18,6 @@
 import CommentItem from './CommentItem.vue'
 
 defineProps({ comments: Array, loading: Boolean, error: String })
-defineEmits(['reply'])
 </script>
 
 <style scoped>

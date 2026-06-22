@@ -2,11 +2,13 @@
   <div class="app">
     <div class="container">
       <h1>Comments</h1>
+      <button v-if="!showForm" class="btn-leave-comment" @click="showForm = true">
+        Leave a comment
+      </button>
       <CommentForm
+        v-if="showForm"
         @comment-created="handleCommentCreated"
-        @refresh-captcha="refreshCaptchaKey"
-        :captcha-key="captchaKey"
-        :captcha-url="captchaUrl"
+        @cancel="showForm = false"
       />
       <SortControls
         :sort-by="sortBy"
@@ -16,7 +18,6 @@
         :comments="comments"
         :loading="loading"
         :error="error"
-        @reply="openReplyForm"
       />
       <Pagination
         :page="page"
@@ -41,7 +42,6 @@
 import { onMounted, ref, provide } from 'vue'
 import CommentForm from './components/CommentForm.vue'
 import CommentList from './components/CommentList.vue'
-import CommentItem from './components/CommentItem.vue'
 import SortControls from './components/SortControls.vue'
 import Pagination from './components/Pagination.vue'
 import Lightbox from './components/Lightbox.vue'
@@ -61,6 +61,7 @@ const {
   goToPage,
 } = useComments()
 
+const showForm = ref(false)
 const captchaKey = ref('')
 const captchaUrl = ref('')
 const lightboxImage = ref(null)
@@ -68,6 +69,9 @@ const previewData = ref(null)
 
 provide('openLightbox', (url) => { lightboxImage.value = url })
 provide('openPreview', (data) => { previewData.value = data })
+provide('captchaKey', captchaKey)
+provide('captchaUrl', captchaUrl)
+provide('refreshCaptchaKey', refreshCaptchaKey)
 
 function refreshCaptchaKey() {
   fetchCaptcha().then((data) => {
@@ -82,6 +86,7 @@ onMounted(() => {
 })
 
 function handleCommentCreated() {
+  showForm.value = false
   fetchComments()
   refreshCaptchaKey()
 }
@@ -92,11 +97,6 @@ function handleSort(field) {
 
 function handleGoToPage(p) {
   goToPage(p)
-}
-
-function openReplyForm(parentId) {
-  const el = document.getElementById('reply-to-' + parentId)
-  if (el) el.scrollIntoView({ behavior: 'smooth' })
 }
 </script>
 
@@ -137,6 +137,21 @@ h1 {
 button {
   cursor: pointer;
   font-family: inherit;
+}
+
+.btn-leave-comment {
+  display: block;
+  margin-bottom: 16px;
+  background: #1a73e8;
+  color: #fff;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+}
+.btn-leave-comment:hover {
+  background: #1557b0;
 }
 
 a {

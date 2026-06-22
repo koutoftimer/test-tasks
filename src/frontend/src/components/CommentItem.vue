@@ -13,28 +13,36 @@
         <a v-else :href="comment.file" target="_blank" class="file-link" download>Download file</a>
       </div>
       <div class="comment-actions">
-        <button class="btn-reply" @click="$emit('reply', comment.id)">Reply</button>
+        <button class="btn-reply" @click="showReplyForm = !showReplyForm">
+          {{ showReplyForm ? 'Cancel' : 'Reply' }}
+        </button>
       </div>
     </div>
+    <CommentForm
+      v-if="showReplyForm"
+      :parent-id="comment.id"
+      @comment-created="showReplyForm = false"
+      @cancel="showReplyForm = false"
+    />
     <CommentItem
       v-for="reply in comment.replies"
       :key="reply.id"
       :comment="reply"
       :depth="depth + 1"
-      @reply="$emit('reply', $event)"
     />
   </div>
 </template>
 
 <script setup>
-import { inject } from 'vue'
+import { inject, ref } from 'vue'
+import CommentForm from './CommentForm.vue'
 
 defineProps({
   comment: Object,
   depth: { type: Number, default: 0 },
 })
-defineEmits(['reply'])
 
+const showReplyForm = ref(false)
 const openLightbox = inject('openLightbox')
 
 function formatDate(dateStr) {

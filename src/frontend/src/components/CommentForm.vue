@@ -1,6 +1,6 @@
 <template>
-  <div class="comment-form">
-    <h2>Leave a comment</h2>
+  <div class="comment-form" :class="{ 'reply-form': parentId }">
+    <h2>{{ parentId ? 'Reply to comment' : 'Leave a comment' }}</h2>
     <form @submit.prevent="handleSubmit">
       <div class="form-row">
         <div class="form-group">
@@ -22,7 +22,7 @@
       <div class="form-group">
         <label>Text *</label>
         <HtmlToolbar @insert="insertTag" />
-        <textarea v-model="form.text" rows="5" placeholder="Write your comment..." @input="validateText"></textarea>
+        <textarea ref="textareaRef" v-model="form.text" rows="5" placeholder="Write your comment..." @input="validateText"></textarea>
         <span v-if="errors.text" class="error">{{ errors.text }}</span>
       </div>
       <div class="form-group">
@@ -34,7 +34,7 @@
         <div class="form-group">
           <label>CAPTCHA *</label>
           <img :src="captchaUrl" alt="CAPTCHA" class="captcha-image" />
-          <button type="button" class="btn-refresh" @click="$emit('refresh-captcha')">Refresh</button>
+          <button type="button" class="btn-refresh" @click="refreshCaptchaKey()">Refresh</button>
           <input v-model="form.captcha_value" type="text" placeholder="Enter CAPTCHA" @input="validateCaptcha" />
           <span v-if="errors.captcha_value" class="error">{{ errors.captcha_value }}</span>
         </div>
@@ -42,6 +42,7 @@
       <div class="form-actions">
         <button type="button" class="btn-preview" @click="handlePreview">Preview</button>
         <button type="submit" class="btn-submit" :disabled="submitting">{{ submitting ? 'Sending...' : 'Submit' }}</button>
+        <button type="button" class="btn-cancel" @click="$emit('cancel')">Cancel</button>
       </div>
       <div v-if="submitError" class="submit-error">{{ submitError }}</div>
     </form>
@@ -54,10 +55,14 @@ import { useComments } from '../composables/useComments.js'
 import { resizeImage } from '../composables/resizeImage.js'
 import HtmlToolbar from './HtmlToolbar.vue'
 
-const emit = defineEmits(['comment-created', 'refresh-captcha'])
-const props = defineProps({ captchaKey: String, captchaUrl: String })
+const emit = defineEmits(['comment-created', 'cancel'])
+const props = defineProps({ parentId: { type: Number, default: null } })
+const captchaKey = inject('captchaKey')
+const captchaUrl = inject('captchaUrl')
+const refreshCaptchaKey = inject('refreshCaptchaKey', () => {})
 const openPreview = inject('openPreview')
 
+const textareaRef = ref(null)
 const form = reactive({ username: '', email: '', homepage: '', text: '', captcha_value: '', file: null })
 const errors = reactive({ username: '', email: '', homepage: '', text: '', captcha_value: '' })
 const fileError = ref('')
@@ -114,7 +119,7 @@ async function handleFileChange(e) {
 }
 
 function insertTag(tag) {
-  const textarea = document.querySelector('textarea')
+  const textarea = textareaRef.value
   if (!textarea) return
   const start = textarea.selectionStart
   const end = textarea.selectionEnd
@@ -158,14 +163,16 @@ async function handleSubmit() {
       email: form.email,
       homepage: form.homepage,
       text: form.text,
-      captcha_key: props.captchaKey,
+      captcha_key: captchaKey.value,
       captcha_value: form.captcha_value,
+      parent_id: props.parentId,
       file: form.file,
     })
     form.username = ''; form.email = ''; form.homepage = ''; form.text = ''
     form.captcha_value = ''; form.file = null
     const fileInput = document.querySelector('input[type="file"]')
     if (fileInput) fileInput.value = ''
+    refreshCaptchaKey()
     emit('comment-created')
   } catch (err) {
     submitError.value = err.message
@@ -198,5 +205,9 @@ textarea { resize: vertical; }
 .btn-submit { background: #1a73e8; border: none; color: #fff; padding: 10px 24px; border-radius: 4px; font-size: 14px; font-weight: 500; }
 .btn-submit:hover { background: #1557b0; }
 .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+.btn-cancel { background: #fff; border: 1px solid #d0d0d0; color: #555; padding: 10px 24px; border-radius: 4px; font-size: 14px; font-weight: 500; }
+.btn-cancel:hover { background: #f5f5f5; }
 .submit-error { margin-top: 12px; padding: 8px 12px; background: #fce8e6; border-radius: 4px; color: #d93025; font-size: 13px; }
+.reply-form { margin-left: 24px; padding: 16px; background: #f8f9fa; border-radius: 6px; border: 1px solid #e8e8e8; }
+.reply-form h2 { font-size: 15px; margin-bottom: 12px; }
 </style>
