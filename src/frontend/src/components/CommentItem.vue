@@ -1,5 +1,5 @@
 <template>
-  <div class="comment-item" :style="{ marginLeft: depth * 24 + 'px' }">
+  <div class="comment-item" :class="{ 'has-replies': repliesCount > 0 }">
     <div class="comment-card">
       <div class="comment-header">
         <span class="comment-author">{{ comment.profile.username }}</span>
@@ -98,6 +98,8 @@ function sanitizeHtml(text) {
 
 <style scoped>
 .comment-item { margin-top: 8px; }
+.comment-item > .comment-item { margin-left: 16px; }
+.comment-item.has-replies { border-left: 1px solid rgba(26, 115, 232, 0.35); border-radius: 6px; }
 .comment-card {
   background: #fafafa; border: 1px solid #e8e8e8; border-radius: 6px; padding: 12px 16px;
   transition: box-shadow 0.2s;

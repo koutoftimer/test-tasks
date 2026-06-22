@@ -204,6 +204,6 @@ textarea { resize: vertical; }
 .btn-cancel { background: #fff; border: 1px solid #d0d0d0; color: #555; padding: 10px 24px; border-radius: 4px; font-size: 14px; font-weight: 500; }
 .btn-cancel:hover { background: #f5f5f5; }
 .submit-error { margin-top: 12px; padding: 8px 12px; background: #fce8e6; border-radius: 4px; color: #d93025; font-size: 13px; }
-.reply-form { margin-left: 24px; padding: 16px; background: #f8f9fa; border-radius: 6px; border: 1px solid #e8e8e8; }
+.reply-form { margin: 12px 0 8px 16px; padding: 16px; background: #f8f9fa; border-radius: 6px; border: 1px solid #e8e8e8; }
 .reply-form h2 { font-size: 15px; margin-bottom: 12px; }
 </style>
