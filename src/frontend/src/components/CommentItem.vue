@@ -3,8 +3,9 @@
     <div class="comment-card">
       <div class="comment-header">
         <span class="comment-author">{{ comment.profile ? comment.profile.username : 'Anonymous' }}</span>
-        <span v-if="comment.profile" class="comment-email">{{ comment.profile.email }}</span>
-        <a v-if="comment.profile?.homepage" :href="comment.profile.homepage" class="comment-homepage" target="_blank" rel="noopener">www</a>
+        <a v-if="comment.profile?.homepage" :href="comment.profile.homepage" class="comment-homepage" target="_blank" rel="noopener" title="Homepage">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        </a>
         <span class="comment-date">{{ formatDate(comment.created_at) }}</span>
       </div>
       <div class="comment-text" v-html="sanitizeHtml(comment.text)"></div>
@@ -152,10 +153,9 @@ function sanitizeHtml(text) {
 .comment-card:hover { box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
 .comment-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
 .comment-author { font-weight: 600; color: #1a73e8; font-size: 14px; }
-.comment-email { color: #888; font-size: 12px; }
 .comment-date { color: #999; font-size: 12px; margin-left: auto; }
-.comment-homepage { font-size: 12px; color: #1a73e8; text-decoration: none; }
-.comment-homepage:hover { text-decoration: underline; }
+.comment-homepage { color: #888; display: inline-flex; align-items: center; text-decoration: none; }
+.comment-homepage:hover { color: #1a73e8; }
 .comment-text { font-size: 14px; line-height: 1.6; color: #333; margin-bottom: 8px; word-break: break-word; }
 .comment-text :deep(a) { color: #1a73e8; }
 .comment-text :deep(code) { background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-size: 13px; }
