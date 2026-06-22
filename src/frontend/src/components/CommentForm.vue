@@ -33,8 +33,8 @@
       <div class="captcha-row">
         <div class="form-group">
           <label>CAPTCHA *</label>
-          <img :src="captchaUrl" alt="CAPTCHA" class="captcha-image" />
-          <button type="button" class="btn-refresh" @click="refreshCaptchaKey()">Refresh</button>
+          <img :src="store.captchaUrl" alt="CAPTCHA" class="captcha-image" />
+          <button type="button" class="btn-refresh" @click="store.refreshCaptchaKey()">Refresh</button>
           <input v-model="form.captcha_value" type="text" placeholder="Enter CAPTCHA" @input="validateCaptcha" />
           <span v-if="errors.captcha_value" class="error">{{ errors.captcha_value }}</span>
         </div>
@@ -50,17 +50,14 @@
 </template>
 
 <script setup>
-import { inject, reactive, ref } from 'vue'
-import { useComments } from '../composables/useComments.js'
+import { reactive, ref } from 'vue'
+import { useCommentStore } from '../stores/comment.js'
 import { resizeImage } from '../composables/resizeImage.js'
 import HtmlToolbar from './HtmlToolbar.vue'
 
 const emit = defineEmits(['comment-created', 'cancel'])
 const props = defineProps({ parentId: { type: Number, default: null } })
-const captchaKey = inject('captchaKey')
-const captchaUrl = inject('captchaUrl')
-const refreshCaptchaKey = inject('refreshCaptchaKey', () => {})
-const openPreview = inject('openPreview')
+const store = useCommentStore()
 
 const textareaRef = ref(null)
 const form = reactive({ username: '', email: '', homepage: '', text: '', captcha_value: '', file: null })
@@ -144,7 +141,7 @@ async function handlePreview() {
   if (previewFile && previewFile.type.startsWith('image/')) {
     previewFile = await resizeImage(previewFile)
   }
-  openPreview({
+  store.openPreview({
     username: form.username || 'Anonymous',
     text: form.text,
     file: previewFile ? URL.createObjectURL(previewFile) : null,
@@ -157,13 +154,12 @@ async function handleSubmit() {
   if (Object.values(errors).some(Boolean) || fileError.value) return
   submitting.value = true; submitError.value = ''
   try {
-    const { createComment } = useComments()
-    const response = await createComment({
+    const response = await store.createComment({
       username: form.username,
       email: form.email,
       homepage: form.homepage,
       text: form.text,
-      captcha_key: captchaKey.value,
+      captcha_key: store.captchaKey,
       captcha_value: form.captcha_value,
       parent_id: props.parentId,
       file: form.file,
@@ -172,7 +168,7 @@ async function handleSubmit() {
     form.captcha_value = ''; form.file = null
     const fileInput = document.querySelector('input[type="file"]')
     if (fileInput) fileInput.value = ''
-    refreshCaptchaKey()
+    store.refreshCaptchaKey()
     emit('comment-created', response)
   } catch (err) {
     submitError.value = err.message

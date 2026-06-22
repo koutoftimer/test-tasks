@@ -24,10 +24,8 @@ class CommentViewSet(viewsets.ModelViewSet):
             "-user_name": "-profile__user__username",
             "email": "profile__user__email",
             "-email": "-profile__user__email",
-            "created_at": "created_at",
-            "-created_at": "-created_at",
-            "id": "id",
-            "-id": "-id",
+            "created_at": "id",
+            "-created_at": "-id",
         }
         sort_field = allowed_sorts.get(sort_by, "-id")
         return qs.order_by(sort_field)

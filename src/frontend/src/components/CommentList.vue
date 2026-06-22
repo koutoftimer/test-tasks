@@ -9,6 +9,8 @@
         :key="comment.id"
         :comment="comment"
         :depth="0"
+        :show-replies="showReplies"
+        @select="(c) => $emit('select', c)"
       />
     </div>
   </div>
@@ -17,7 +19,8 @@
 <script setup>
 import CommentItem from './CommentItem.vue'
 
-defineProps({ comments: Array, loading: Boolean, error: String })
+defineProps({ comments: Array, loading: Boolean, error: String, showReplies: { type: Boolean, default: false } })
+defineEmits(['select'])
 </script>
 
 <style scoped>
