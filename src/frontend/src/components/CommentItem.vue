@@ -2,6 +2,8 @@
   <div class="comment-item" :class="{ 'has-replies': repliesCount > 0 }">
     <div class="comment-card">
       <div class="comment-header">
+        <img v-if="comment.profile?.avatar" :src="comment.profile.avatar" class="comment-avatar" />
+        <svg v-else class="comment-avatar comment-avatar-placeholder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
         <span class="comment-author">{{ comment.profile ? comment.profile.username : 'Anonymous' }}</span>
         <a v-if="comment.profile?.homepage" :href="comment.profile.homepage" class="comment-homepage" target="_blank" rel="noopener" title="Homepage">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
@@ -151,8 +153,10 @@ function sanitizeHtml(text) {
   transition: box-shadow 0.2s;
 }
 .comment-card:hover { box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
-.comment-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+.comment-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
 .comment-author { font-weight: 600; color: #1a73e8; font-size: 14px; }
+.comment-avatar { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+.comment-avatar-placeholder { color: #bbb; }
 .comment-date { color: #999; font-size: 12px; margin-left: auto; }
 .comment-homepage { color: #888; display: inline-flex; align-items: center; text-decoration: none; }
 .comment-homepage:hover { color: #1a73e8; }

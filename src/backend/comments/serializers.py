@@ -9,10 +9,16 @@ from .models import Comment, Profile
 
 class ProfileSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source="user.username", read_only=True)
+    avatar = serializers.SerializerMethodField()
 
     class Meta:
         model = Profile
         fields = ["id", "username", "homepage", "avatar"]
+
+    def get_avatar(self, obj):
+        if obj.avatar:
+            return f"{settings.API_BASE_URL}{obj.avatar.url}"
+        return None
 
 
 class ProfileDetailSerializer(ProfileSerializer):
