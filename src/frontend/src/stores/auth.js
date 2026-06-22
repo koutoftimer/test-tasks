@@ -1,7 +1,6 @@
 import axios from 'axios'
 import { defineStore } from 'pinia'
-
-const API_BASE = 'http://api.comments:8002'
+import { API_BASE } from '../utils/config.js'
 
 const authApi = axios.create({
   baseURL: API_BASE + '/api',
