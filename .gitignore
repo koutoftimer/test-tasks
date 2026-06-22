@@ -9,3 +9,6 @@ media/
 static/
 .env.prod
 
+# ignore vim temp files
+*.swo
+*.swp
