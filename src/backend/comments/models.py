@@ -12,14 +12,14 @@ from PIL import Image
 
 
 def comment_file_path(instance, filename):
-    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
-    name = f"{uuid.uuid4().hex}{'.' + ext if ext else ''}"
+    _, ext = os.path.splitext(filename)
+    name = f"{uuid.uuid4().hex}{ext.lower()}"
     return os.path.join("uploads", datetime.now().strftime("%Y/%m/%d"), name)
 
 
 def avatar_file_path(instance, filename):
-    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
-    name = f"{uuid.uuid4().hex}{'.' + ext if ext else ''}"
+    _, ext = os.path.splitext(filename)
+    name = f"{uuid.uuid4().hex}{ext.lower()}"
     return os.path.join("avatars", datetime.now().strftime("%Y/%m/%d"), name)
 
 
