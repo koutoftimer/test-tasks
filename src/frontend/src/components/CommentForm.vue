@@ -9,9 +9,15 @@
         <span v-if="errors.text" class="error">{{ errors.text }}</span>
       </div>
       <div class="form-group">
-        <label for="file">Attachment</label>
-        <input id="file" type="file" accept=".jpg,.jpeg,.png,.gif,.txt" @change="handleFileChange" />
+        <label for="files">Attachments</label>
+        <input id="files" type="file" multiple accept=".jpg,.jpeg,.png,.gif,.txt" @change="handleFilesChange" />
         <span v-if="fileError" class="error">{{ fileError }}</span>
+        <div v-if="form.files.length" class="file-list">
+          <span v-for="(f, i) in form.files" :key="i" class="file-item">
+            {{ f.name }}
+            <button type="button" class="file-remove" @click="removeFile(i)">&times;</button>
+          </span>
+        </div>
       </div>
       <div class="form-group">
         <label>CAPTCHA</label>
@@ -44,7 +50,7 @@ const store = useCommentStore()
 const auth = useAuthStore()
 
 const textareaRef = ref(null)
-const form = reactive({ text: '', file: null })
+const form = reactive({ text: '', files: [] })
 const errors = reactive({ text: '', captcha: '' })
 const fileError = ref('')
 const submitError = ref('')
@@ -69,25 +75,31 @@ function validateText() {
   else errors.text = ''
 }
 
-async function handleFileChange(e) {
-  const file = e.target.files[0]
-  if (!file) { form.file = null; fileError.value = ''; return }
-  const ext = file.name.split('.').pop().toLowerCase()
-  if (!['jpg', 'jpeg', 'png', 'gif', 'txt'].includes(ext)) {
-    fileError.value = 'Only JPG, GIF, PNG, and TXT files are allowed'
-    e.target.value = ''; form.file = null; return
+async function handleFilesChange(e) {
+  const files = Array.from(e.target.files)
+  fileError.value = ''
+  const processed = []
+  for (const file of files) {
+    const ext = file.name.split('.').pop().toLowerCase()
+    if (!['jpg', 'jpeg', 'png', 'gif', 'txt'].includes(ext)) {
+      fileError.value = 'Only JPG, GIF, PNG, and TXT files are allowed'
+      continue
+    }
+    if (ext === 'txt' && file.size > 100 * 1024) {
+      fileError.value = 'Text file must be under 100KB'
+      continue
+    }
+    try {
+      processed.push(ext === 'txt' ? file : await resizeImage(file))
+    } catch {
+      fileError.value = 'Failed to process image'
+    }
   }
-  if (ext === 'txt' && file.size > 100 * 1024) {
-    fileError.value = 'Text file must be under 100KB'
-    e.target.value = ''; form.file = null; return
-  }
-  try {
-    form.file = ext === 'txt' ? file : await resizeImage(file)
-    fileError.value = ''
-  } catch {
-    fileError.value = 'Failed to process image'
-    form.file = null
-  }
+  form.files = processed
+}
+
+function removeFile(index) {
+  form.files.splice(index, 1)
 }
 
 function insertTag(tag) {
@@ -112,10 +124,8 @@ function insertTag(tag) {
 }
 
 async function handlePreview() {
-  let previewFile = form.file
-  if (previewFile && previewFile.type.startsWith('image/')) {
-    previewFile = await resizeImage(previewFile)
-  }
+  const firstFile = form.files[0] || null
+  const previewFile = firstFile && firstFile.type.startsWith('image/') ? await resizeImage(firstFile) : firstFile
   store.openPreview({
     username: auth.user?.username || 'Anonymous',
     text: form.text,
@@ -147,11 +157,11 @@ async function handleSubmit() {
     const response = await store.createComment({
       text: form.text,
       parent_id: props.parentId,
-      file: form.file,
+      files: form.files,
       captcha_key: captchaKey.value,
       captcha_value: captchaValue.value,
     })
-    form.text = ''; form.file = null
+    form.text = ''; form.files = []
     const fileInput = document.querySelector('input[type="file"]')
     if (fileInput) fileInput.value = ''
     emit('comment-created', response)
@@ -188,4 +198,7 @@ textarea { resize: vertical; }
 .captcha-row { display: flex; align-items: center; gap: 12px; }
 .captcha-image { border: 1px solid #d0d0d0; border-radius: 4px; }
 .captcha-input { width: 140px; padding: 8px 12px; border: 1px solid #d0d0d0; border-radius: 4px; font-size: 14px; }
+.file-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.file-item { display: inline-flex; align-items: center; gap: 4px; background: #e8f0fe; padding: 2px 8px; border-radius: 4px; font-size: 12px; color: #1a73e8; }
+.file-remove { background: none; border: none; color: #d93025; cursor: pointer; font-size: 14px; padding: 0; line-height: 1; }
 </style>

@@ -144,7 +144,11 @@ export const useCommentStore = defineStore('comment', {
       formData.append('captcha_key', data.captcha_key)
       formData.append('captcha_value', data.captcha_value)
       if (data.parent_id) formData.append('parent_id', String(data.parent_id))
-      if (data.file) formData.append('file', data.file)
+      if (data.files) {
+        for (const f of data.files) {
+          formData.append('files', f)
+        }
+      }
 
       try {
         const response = await api.post('/comments/', formData, {

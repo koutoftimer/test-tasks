@@ -1,3 +1,5 @@
+import os
+
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.utils import timezone
@@ -47,7 +49,7 @@ class CommentListSerializer(serializers.ModelSerializer):
     dislike_count = serializers.SerializerMethodField()
     is_liked = serializers.SerializerMethodField()
     is_disliked = serializers.SerializerMethodField()
-    attachment = serializers.SerializerMethodField()
+    attachments = CommentAttachmentSerializer(many=True, read_only=True)
 
     class Meta:
         model = Comment
@@ -57,7 +59,7 @@ class CommentListSerializer(serializers.ModelSerializer):
             "text",
             "parent",
             "created_at",
-            "attachment",
+            "attachments",
             "reply_count",
             "like_count",
             "dislike_count",
@@ -84,12 +86,6 @@ class CommentListSerializer(serializers.ModelSerializer):
     def get_is_disliked(self, obj):
         return getattr(obj, "is_disliked", False)
 
-    def get_attachment(self, obj):
-        att = obj.attachments.first()
-        if att:
-            return CommentAttachmentSerializer(att).data
-        return None
-
 
 class CommentDetailSerializer(serializers.ModelSerializer):
     profile = ProfileSerializer(read_only=True, allow_null=True)
@@ -98,7 +94,7 @@ class CommentDetailSerializer(serializers.ModelSerializer):
     dislike_count = serializers.SerializerMethodField()
     is_liked = serializers.SerializerMethodField()
     is_disliked = serializers.SerializerMethodField()
-    attachment = serializers.SerializerMethodField()
+    attachments = CommentAttachmentSerializer(many=True, read_only=True)
 
     class Meta:
         model = Comment
@@ -108,7 +104,7 @@ class CommentDetailSerializer(serializers.ModelSerializer):
             "text",
             "parent",
             "created_at",
-            "attachment",
+            "attachments",
             "replies",
             "like_count",
             "dislike_count",
@@ -140,17 +136,27 @@ class CommentDetailSerializer(serializers.ModelSerializer):
     def get_is_disliked(self, obj):
         return getattr(obj, "is_disliked", False)
 
-    def get_attachment(self, obj):
-        att = obj.attachments.first()
-        if att:
-            return CommentAttachmentSerializer(att).data
-        return None
+
+def _validate_single_file(file):
+    _, ext = os.path.splitext(file.name.lower())
+    ext = ext.lstrip(".") if ext else ""
+    if ext not in ("jpg", "jpeg", "png", "gif", "txt"):
+        raise serializers.ValidationError(
+            "Only JPG, GIF, PNG, and TXT files are allowed."
+        )
+    if ext == "txt" and file.size > 100 * 1024:
+        raise serializers.ValidationError(
+            "Text file exceeds maximum size of 100KB."
+        )
+    return file
 
 
 class CommentCreateSerializer(serializers.Serializer):
     text = serializers.CharField()
     parent_id = serializers.IntegerField(required=False, allow_null=True)
-    file = serializers.FileField(required=False, allow_null=True)
+    files = serializers.ListField(
+        child=serializers.FileField(), required=False, allow_empty=True
+    )
     captcha_key = serializers.CharField(write_only=True)
     captcha_value = serializers.CharField(write_only=True)
 
@@ -159,20 +165,10 @@ class CommentCreateSerializer(serializers.Serializer):
             raise serializers.ValidationError("Text is required.")
         return value
 
-    def validate_file(self, value):
+    def validate_files(self, value):
         if value:
-            ext = value.name.split(".")[-1].lower()
-            if ext in ("jpg", "jpeg", "png", "gif"):
-                pass
-            elif ext == "txt":
-                if value.size > 100 * 1024:
-                    raise serializers.ValidationError(
-                        "Text file exceeds maximum size of 100KB."
-                    )
-            else:
-                raise serializers.ValidationError(
-                    "Only JPG, GIF, PNG, and TXT files are allowed."
-                )
+            for f in value:
+                _validate_single_file(f)
         return value
 
     def validate_parent_id(self, value):
@@ -196,23 +192,24 @@ class CommentCreateSerializer(serializers.Serializer):
             )
         return attrs
 
+    def _get_file_type(self, file):
+        _, ext = os.path.splitext(file.name.lower())
+        ext = ext.lstrip(".") if ext else ""
+        if ext in ("jpg", "jpeg", "png", "gif"):
+            return "image"
+        if ext == "txt":
+            return "text"
+        return None
+
     def create(self, validated_data):
         text = validated_data["text"]
         parent_id = validated_data.get("parent_id")
-        file = validated_data.get("file")
+        files = validated_data.get("files", [])
 
         request = self.context.get("request")
         profile = None
         if request and request.user.is_authenticated:
             profile, _ = Profile.objects.get_or_create(user=request.user)
-
-        file_type = None
-        if file:
-            ext = file.name.split(".")[-1].lower()
-            if ext in ("jpg", "jpeg", "png", "gif"):
-                file_type = "image"
-            elif ext == "txt":
-                file_type = "text"
 
         parent = None
         if parent_id:
@@ -224,11 +221,11 @@ class CommentCreateSerializer(serializers.Serializer):
             parent=parent,
         )
 
-        if file:
+        for f in files:
             CommentAttachment.objects.create(
                 comment=comment,
-                file=file,
-                file_type=file_type,
+                file=f,
+                file_type=self._get_file_type(f),
             )
 
         return comment

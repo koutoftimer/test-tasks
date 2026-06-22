@@ -11,9 +11,11 @@
         <span class="comment-date">{{ formatDate(comment.created_at) }}</span>
       </div>
       <div class="comment-text" v-html="sanitizeHtml(comment.text)"></div>
-      <div v-if="comment.attachment?.file" class="comment-file">
-        <img v-if="comment.attachment.file_type === 'image'" :src="mediaUrl(comment.attachment.file)" alt="Attachment" class="comment-image" @click="store.openLightbox(mediaUrl(comment.attachment.file))" />
-        <a v-else :href="mediaUrl(comment.attachment.file)" target="_blank" class="file-link" download>Download file</a>
+      <div v-if="comment.attachments?.length" class="comment-files">
+        <div v-for="att in comment.attachments" :key="att.id" class="comment-file">
+          <img v-if="att.file_type === 'image'" :src="mediaUrl(att.file)" alt="Attachment" class="comment-image" @click="store.openLightbox(mediaUrl(att.file))" />
+          <a v-else :href="mediaUrl(att.file)" target="_blank" class="file-link" download>Download file</a>
+        </div>
       </div>
       <div class="comment-actions">
         <span v-if="voteError" class="vote-error">{{ voteError }}</span>
