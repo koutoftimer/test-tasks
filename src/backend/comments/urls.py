@@ -14,6 +14,8 @@ urlpatterns = [
     path("api/", include(router.urls)),
     path("api/captcha/", views.captcha, name="captcha"),
     path("captcha/", include("captcha.urls")),
+    path("api/auth/", include("djoser.urls")),
+    path("api/auth/", include("djoser.urls.jwt")),
 ]
 
 if settings.DEBUG:

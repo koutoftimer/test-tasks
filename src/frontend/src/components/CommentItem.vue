@@ -2,9 +2,9 @@
   <div class="comment-item" :class="{ 'has-replies': repliesCount > 0 }">
     <div class="comment-card">
       <div class="comment-header">
-        <span class="comment-author">{{ comment.profile.username }}</span>
-        <span class="comment-email">{{ comment.profile.email }}</span>
-        <a v-if="comment.profile.homepage" :href="comment.profile.homepage" class="comment-homepage" target="_blank" rel="noopener">www</a>
+        <span class="comment-author">{{ comment.profile ? comment.profile.username : 'Anonymous' }}</span>
+        <span v-if="comment.profile" class="comment-email">{{ comment.profile.email }}</span>
+        <a v-if="comment.profile?.homepage" :href="comment.profile.homepage" class="comment-homepage" target="_blank" rel="noopener">www</a>
         <span class="comment-date">{{ formatDate(comment.created_at) }}</span>
       </div>
       <div class="comment-text" v-html="sanitizeHtml(comment.text)"></div>
@@ -13,6 +13,20 @@
         <a v-else :href="comment.file" target="_blank" class="file-link" download>Download file</a>
       </div>
       <div class="comment-actions">
+        <span v-if="voteError" class="vote-error">{{ voteError }}</span>
+        <button class="btn-vote" :class="{ active: comment.user_vote === 'like' }" @click="handleVote('like')">
+          <svg class="vote-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
+          </svg>
+          <span class="vote-count">{{ comment.like_count }}</span>
+        </button>
+        <button class="btn-vote" :class="{ active: comment.user_vote === 'dislike' }" @click="handleVote('dislike')">
+          <svg class="vote-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10zM17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17" />
+          </svg>
+          <span class="vote-count">{{ comment.dislike_count }}</span>
+        </button>
+        <span class="actions-divider"></span>
         <button class="btn-reply" @click="showReplyForm = !showReplyForm">
           {{ showReplyForm ? 'Cancel' : 'Reply' }}
         </button>
@@ -40,6 +54,7 @@
 
 <script setup>
 import { computed, ref } from 'vue'
+import { useAuthStore } from '../stores/auth.js'
 import { useCommentStore } from '../stores/comment.js'
 import CommentForm from './CommentForm.vue'
 
@@ -52,7 +67,9 @@ const props = defineProps({
 const emit = defineEmits(['select'])
 
 const store = useCommentStore()
+const auth = useAuthStore()
 const showReplyForm = ref(false)
+const voteError = ref('')
 
 const repliesCount = computed(() => props.comment.reply_count ?? props.comment.replies?.length ?? 0)
 const showRepliesLink = computed(() => !props.showReplies && repliesCount.value > 0)
@@ -66,6 +83,32 @@ function formatDate(dateStr) {
 function handleReplyCreated(reply) {
   store.addReply(props.comment.id, reply)
   showReplyForm.value = false
+}
+
+async function handleVote(voteType) {
+  if (!auth.isAuthenticated) {
+    voteError.value = 'Please log in to vote'
+    setTimeout(() => { voteError.value = '' }, 3000)
+    return
+  }
+  voteError.value = ''
+  try {
+    const current = props.comment.user_vote
+    if (current === voteType) {
+      const data = await store.removeVote(props.comment.id)
+      props.comment.user_vote = null
+      props.comment.like_count = data.like_count
+      props.comment.dislike_count = data.dislike_count
+    } else {
+      const data = await store.voteComment(props.comment.id, voteType)
+      props.comment.user_vote = data.vote
+      props.comment.like_count = data.like_count
+      props.comment.dislike_count = data.dislike_count
+    }
+  } catch {
+    voteError.value = 'Failed to vote. Try logging in again.'
+    setTimeout(() => { voteError.value = '' }, 3000)
+  }
 }
 
 function sanitizeHtml(text) {
@@ -120,6 +163,14 @@ function sanitizeHtml(text) {
 .comment-image { max-width: 320px; max-height: 240px; border-radius: 4px; cursor: pointer; border: 1px solid #e0e0e0; }
 .file-link { color: #1a73e8; font-size: 13px; }
 .comment-actions { display: flex; align-items: center; gap: 12px; padding-top: 6px; border-top: 1px solid #f0f0f0; }
+.btn-vote { background: none; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 3px; padding: 2px 6px; border-radius: 3px; font-size: 12px; color: #888; transition: color 0.15s; }
+.btn-vote:hover { color: #1a73e8; background: #e8f0fe; }
+.btn-vote.active { color: #1a73e8; }
+.btn-vote.active .vote-icon { stroke: #1a73e8; }
+.vote-error { color: #d93025; font-size: 12px; flex: 1 1 100%; margin-bottom: 4px; }
+.vote-icon { width: 14px; height: 14px; }
+.vote-count { font-size: 12px; line-height: 1; }
+.actions-divider { width: 1px; height: 14px; background: #e0e0e0; }
 .btn-reply { background: none; border: none; color: #1a73e8; font-size: 12px; cursor: pointer; padding: 2px 8px; border-radius: 3px; }
 .btn-reply:hover { background: #e8f0fe; }
 .btn-show-replies { background: none; border: none; color: #1a73e8; font-size: 12px; cursor: pointer; padding: 2px 8px; border-radius: 3px; font-weight: 500; }

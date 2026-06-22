@@ -7,6 +7,15 @@ const api = axios.create({
   baseURL: API_BASE + '/api',
 })
 
+api.interceptors.request.use(async (config) => {
+  const { useAuthStore } = await import('./auth.js')
+  const auth = useAuthStore()
+  if (auth.accessToken) {
+    config.headers.Authorization = `Bearer ${auth.accessToken}`
+  }
+  return config
+})
+
 export const useCommentStore = defineStore('comment', {
   state: () => ({
     comments: [],
@@ -16,11 +25,12 @@ export const useCommentStore = defineStore('comment', {
     sortBy: '-created_at',
     loading: false,
     error: null,
-    captchaKey: '',
-    captchaUrl: '',
     showForm: false,
     lightboxImage: null,
     previewData: null,
+    currentComment: null,
+    currentLoading: false,
+    currentError: null,
   }),
 
   actions: {
@@ -51,14 +61,29 @@ export const useCommentStore = defineStore('comment', {
       return response.data
     },
 
+    async fetchCommentDetail(id) {
+      this.currentLoading = true
+      this.currentError = null
+      try {
+        let found = this.comments.find(c => c.id === id)
+        if (!found) {
+          found = await this.fetchComment(id)
+          this.comments.unshift(found)
+        }
+        found.replies = await this.fetchReplies(id)
+        this.currentComment = found
+      } catch (err) {
+        this.currentError = err.message || 'Failed to load comment'
+      } finally {
+        this.currentLoading = false
+      }
+    },
+
     async createComment(data) {
       const formData = new FormData()
-      formData.append('username', data.username)
-      formData.append('email', data.email)
       formData.append('text', data.text)
       formData.append('captcha_key', data.captcha_key)
       formData.append('captcha_value', data.captcha_value)
-      if (data.homepage) formData.append('homepage', data.homepage)
       if (data.parent_id) formData.append('parent_id', String(data.parent_id))
       if (data.file) formData.append('file', data.file)
 
@@ -89,16 +114,6 @@ export const useCommentStore = defineStore('comment', {
       }
     },
 
-    async refreshCaptchaKey() {
-      try {
-        const data = await this.fetchCaptcha()
-        this.captchaKey = data.key
-        this.captchaUrl = data.image_url
-      } catch {
-        // ignore
-      }
-    },
-
     setSort(field) {
       if (this.sortBy === field) {
         this.sortBy = `-${field}`
@@ -118,7 +133,6 @@ export const useCommentStore = defineStore('comment', {
       this.showForm = false
       comment.reply_count = comment.replies?.length ?? 0
       this.comments.unshift(comment)
-      this.refreshCaptchaKey()
     },
 
     addReply(parentId, reply) {
@@ -138,6 +152,16 @@ export const useCommentStore = defineStore('comment', {
         return false
       }
       findParent(this.comments)
+    },
+
+    async voteComment(commentId, voteType) {
+      const response = await api.post(`/comments/${commentId}/vote/`, { vote: voteType })
+      return response.data
+    },
+
+    async removeVote(commentId) {
+      const response = await api.delete(`/comments/${commentId}/vote/`)
+      return response.data
     },
 
     openLightbox(url) {

@@ -1,14 +1,14 @@
 <template>
   <div>
     <button class="btn-back" @click="router.back()">← Back to all comments</button>
-    <div v-if="loading" class="loading">Loading...</div>
-    <div v-else-if="error" class="error-message">{{ error }}</div>
-    <CommentItem v-else-if="comment" :comment="comment" :depth="0" :show-replies="true" />
+    <div v-if="store.currentLoading" class="loading">Loading...</div>
+    <div v-else-if="store.currentError" class="error-message">{{ store.currentError }}</div>
+    <CommentItem v-else-if="store.currentComment" :comment="store.currentComment" :depth="0" :show-replies="true" />
   </div>
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useCommentStore } from '../stores/comment.js'
 import CommentItem from '../components/CommentItem.vue'
@@ -17,25 +17,8 @@ const route = useRoute()
 const router = useRouter()
 const store = useCommentStore()
 
-const comment = ref(null)
-const loading = ref(true)
-const error = ref(null)
-
-onMounted(async () => {
-  try {
-    const id = Number(route.params.id)
-    let found = store.comments.find(c => c.id === id)
-    if (!found) {
-      found = await store.fetchComment(id)
-      store.comments.unshift(found)
-    }
-    found.replies = await store.fetchReplies(id)
-    comment.value = found
-  } catch (err) {
-    error.value = err.message || 'Failed to load comment'
-  } finally {
-    loading.value = false
-  }
+onMounted(() => {
+  store.fetchCommentDetail(Number(route.params.id))
 })
 </script>
 

@@ -5,7 +5,6 @@ import uuid
 from datetime import datetime
 
 from django.conf import settings
-from django.contrib.auth.models import User
 from django.core.files.base import ContentFile
 from django.db import models
 from PIL import Image
@@ -18,7 +17,9 @@ def comment_file_path(instance, filename):
 
 
 class Profile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profile"
+    )
     homepage = models.URLField(max_length=200, blank=True, null=True)
     avatar = models.ImageField(upload_to="avatars/", blank=True, null=True)
 
@@ -52,7 +53,7 @@ class Comment(models.Model):
     ]
 
     profile = models.ForeignKey(
-        Profile, on_delete=models.CASCADE, related_name="comments"
+        Profile, on_delete=models.CASCADE, related_name="comments", null=True, blank=True
     )
     text = models.TextField()
     parent = models.ForeignKey(
@@ -127,3 +128,22 @@ class Comment(models.Model):
             stack.append(tag)
         for tag in reversed(stack):
             self.text += f"</{tag}>"
+
+
+class CommentVote(models.Model):
+    comment = models.ForeignKey(
+        Comment, on_delete=models.CASCADE, related_name="votes"
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="comment_votes"
+    )
+    vote = models.BooleanField(null=True)
+
+    class Meta:
+        unique_together = ("comment", "user")
+        verbose_name = "Comment Vote"
+        verbose_name_plural = "Comment Votes"
+
+    def __str__(self):
+        status = "like" if self.vote is True else "dislike" if self.vote is False else "removed"
+        return f"{status} by {self.user.username} on Comment #{self.comment_id}"

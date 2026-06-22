@@ -2,6 +2,8 @@ Django==5.2.3
 djangorestframework==3.16.0
 django-cors-headers==4.7.0
 django-simple-captcha==0.6.0
+djangorestframework-simplejwt==5.5.1
+djoser==2.3.3
 Pillow==11.1.0
 psycopg2-binary==2.9.10
 python-dateutil==2.9.0

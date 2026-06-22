@@ -1,7 +1,4 @@
-import re
-
 from django.conf import settings
-from django.contrib.auth.models import User
 from django.utils import timezone
 from rest_framework import serializers
 
@@ -18,8 +15,11 @@ class ProfileSerializer(serializers.ModelSerializer):
 
 
 class CommentListSerializer(serializers.ModelSerializer):
-    profile = ProfileSerializer(read_only=True)
+    profile = ProfileSerializer(read_only=True, allow_null=True)
     reply_count = serializers.SerializerMethodField()
+    like_count = serializers.SerializerMethodField()
+    dislike_count = serializers.SerializerMethodField()
+    user_vote = serializers.SerializerMethodField()
     file = serializers.SerializerMethodField()
 
     class Meta:
@@ -33,6 +33,9 @@ class CommentListSerializer(serializers.ModelSerializer):
             "file",
             "file_type",
             "reply_count",
+            "like_count",
+            "dislike_count",
+            "user_vote",
         ]
 
     def get_file(self, obj):
@@ -43,10 +46,29 @@ class CommentListSerializer(serializers.ModelSerializer):
     def get_reply_count(self, obj):
         return obj.replies.count()
 
+    def get_like_count(self, obj):
+        if hasattr(obj, "like_count"):
+            return obj.like_count
+        return obj.votes.filter(vote=True).count()
+
+    def get_dislike_count(self, obj):
+        if hasattr(obj, "dislike_count"):
+            return obj.dislike_count
+        return obj.votes.filter(vote=False).count()
+
+    def get_user_vote(self, obj):
+        votes = getattr(obj, "_user_votes", None)
+        if votes:
+            return votes[0].vote
+        return None
+
 
 class CommentDetailSerializer(serializers.ModelSerializer):
-    profile = ProfileSerializer(read_only=True)
+    profile = ProfileSerializer(read_only=True, allow_null=True)
     replies = serializers.SerializerMethodField()
+    like_count = serializers.SerializerMethodField()
+    dislike_count = serializers.SerializerMethodField()
+    user_vote = serializers.SerializerMethodField()
     file = serializers.SerializerMethodField()
 
     class Meta:
@@ -60,6 +82,9 @@ class CommentDetailSerializer(serializers.ModelSerializer):
             "file",
             "file_type",
             "replies",
+            "like_count",
+            "dislike_count",
+            "user_vote",
         ]
 
     def get_file(self, obj):
@@ -75,23 +100,29 @@ class CommentDetailSerializer(serializers.ModelSerializer):
             ).data
         return []
 
+    def get_like_count(self, obj):
+        if hasattr(obj, "like_count"):
+            return obj.like_count
+        return obj.votes.filter(vote=True).count()
+
+    def get_dislike_count(self, obj):
+        if hasattr(obj, "dislike_count"):
+            return obj.dislike_count
+        return obj.votes.filter(vote=False).count()
+
+    def get_user_vote(self, obj):
+        votes = getattr(obj, "_user_votes", None)
+        if votes:
+            return votes[0].vote
+        return None
+
 
 class CommentCreateSerializer(serializers.Serializer):
-    username = serializers.CharField(max_length=150)
-    email = serializers.EmailField()
-    homepage = serializers.URLField(required=False, allow_blank=True)
-    captcha_key = serializers.CharField(write_only=True)
-    captcha_value = serializers.CharField(write_only=True)
     text = serializers.CharField()
     parent_id = serializers.IntegerField(required=False, allow_null=True)
     file = serializers.FileField(required=False, allow_null=True)
-
-    def validate_username(self, value):
-        if not re.match(r"^[a-zA-Z0-9]+$", value):
-            raise serializers.ValidationError(
-                "Username must contain only Latin letters and digits."
-            )
-        return value
+    captcha_key = serializers.CharField(write_only=True)
+    captcha_value = serializers.CharField(write_only=True)
 
     def validate_text(self, value):
         if not value or not value.strip():
@@ -139,25 +170,14 @@ class CommentCreateSerializer(serializers.Serializer):
         return attrs
 
     def create(self, validated_data):
-        username = validated_data["username"]
-        email = validated_data["email"]
-        homepage = validated_data.get("homepage", "")
         text = validated_data["text"]
         parent_id = validated_data.get("parent_id")
         file = validated_data.get("file")
 
-        user, _ = User.objects.get_or_create(
-            username=username,
-            defaults={"email": email},
-        )
-        if user.email != email:
-            user.email = email
-            user.save()
-
-        profile, _ = Profile.objects.get_or_create(user=user)
-        if homepage and profile.homepage != homepage:
-            profile.homepage = homepage
-            profile.save()
+        request = self.context.get("request")
+        profile = None
+        if request and request.user.is_authenticated:
+            profile, _ = Profile.objects.get_or_create(user=request.user)
 
         file_type = None
         if file:
