@@ -33,6 +33,7 @@
 
 <script setup>
 import { reactive, ref, onMounted } from 'vue'
+import { useAuthStore } from '../stores/auth.js'
 import { useCommentStore } from '../stores/comment.js'
 import { resizeImage } from '../composables/resizeImage.js'
 import HtmlToolbar from './HtmlToolbar.vue'
@@ -40,6 +41,7 @@ import HtmlToolbar from './HtmlToolbar.vue'
 const emit = defineEmits(['comment-created', 'cancel'])
 const props = defineProps({ parentId: { type: Number, default: null } })
 const store = useCommentStore()
+const auth = useAuthStore()
 
 const textareaRef = ref(null)
 const form = reactive({ text: '', file: null })
@@ -115,7 +117,7 @@ async function handlePreview() {
     previewFile = await resizeImage(previewFile)
   }
   store.openPreview({
-    username: 'Preview',
+    username: auth.user?.username || 'Anonymous',
     text: form.text,
     file: previewFile ? URL.createObjectURL(previewFile) : null,
     fileType: previewFile ? previewFile.name.split('.').pop().toLowerCase() : null,
