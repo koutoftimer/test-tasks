@@ -29,7 +29,7 @@
     />
     <CommentItem
       v-if="showReplies"
-      v-for="reply in comment.replies"
+      v-for="reply in comment.replies || []"
       :key="reply.id"
       :comment="reply"
       :depth="depth + 1"
@@ -54,7 +54,7 @@ const emit = defineEmits(['select'])
 const store = useCommentStore()
 const showReplyForm = ref(false)
 
-const repliesCount = computed(() => props.comment.replies?.length || 0)
+const repliesCount = computed(() => props.comment.reply_count ?? props.comment.replies?.length ?? 0)
 const showRepliesLink = computed(() => !props.showReplies && repliesCount.value > 0)
 
 function formatDate(dateStr) {

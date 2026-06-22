@@ -19,6 +19,33 @@ class ProfileSerializer(serializers.ModelSerializer):
 
 class CommentListSerializer(serializers.ModelSerializer):
     profile = ProfileSerializer(read_only=True)
+    reply_count = serializers.SerializerMethodField()
+    file = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Comment
+        fields = [
+            "id",
+            "profile",
+            "text",
+            "parent",
+            "created_at",
+            "file",
+            "file_type",
+            "reply_count",
+        ]
+
+    def get_file(self, obj):
+        if obj.file:
+            return f"{settings.API_BASE_URL}{obj.file.url}"
+        return None
+
+    def get_reply_count(self, obj):
+        return obj.replies.count()
+
+
+class CommentDetailSerializer(serializers.ModelSerializer):
+    profile = ProfileSerializer(read_only=True)
     replies = serializers.SerializerMethodField()
     file = serializers.SerializerMethodField()
 
@@ -41,9 +68,9 @@ class CommentListSerializer(serializers.ModelSerializer):
         return None
 
     def get_replies(self, obj):
-        replies = obj.replies.all()
+        replies = obj.replies.all().order_by("id")
         if replies:
-            return CommentListSerializer(
+            return CommentDetailSerializer(
                 replies, many=True, context=self.context
             ).data
         return []
@@ -155,4 +182,4 @@ class CommentCreateSerializer(serializers.Serializer):
         return comment
 
     def to_representation(self, instance):
-        return CommentListSerializer(instance, context=self.context).data
+        return CommentDetailSerializer(instance, context=self.context).data

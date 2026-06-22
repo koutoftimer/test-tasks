@@ -46,6 +46,11 @@ export const useCommentStore = defineStore('comment', {
       return response.data
     },
 
+    async fetchReplies(id) {
+      const response = await api.get(`/comments/${id}/replies/`)
+      return response.data
+    },
+
     async createComment(data) {
       const formData = new FormData()
       formData.append('username', data.username)
@@ -111,6 +116,7 @@ export const useCommentStore = defineStore('comment', {
 
     handleCommentCreated(comment) {
       this.showForm = false
+      comment.reply_count = comment.replies?.length ?? 0
       this.comments.unshift(comment)
       this.refreshCaptchaKey()
     },
@@ -119,13 +125,17 @@ export const useCommentStore = defineStore('comment', {
       const findParent = (items) => {
         for (const item of items) {
           if (item.id === parentId) {
+            if (!item.replies) item.replies = []
             item.replies.push(reply)
-            return
+            if (item.reply_count !== undefined) item.reply_count++
+            return true
           }
           if (item.replies && item.replies.length) {
-            findParent(item.replies)
+            const found = findParent(item.replies)
+            if (found) return true
           }
         }
+        return false
       }
       findParent(this.comments)
     },

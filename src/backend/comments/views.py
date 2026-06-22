@@ -1,11 +1,15 @@
 from captcha.helpers import captcha_image_url
 from captcha.models import CaptchaStore
 from rest_framework import status, viewsets
-from rest_framework.decorators import api_view
+from rest_framework.decorators import action, api_view
 from rest_framework.response import Response
 
 from .models import Comment
-from .serializers import CommentCreateSerializer, CommentListSerializer
+from .serializers import (
+    CommentCreateSerializer,
+    CommentDetailSerializer,
+    CommentListSerializer,
+)
 
 
 class CommentViewSet(viewsets.ModelViewSet):
@@ -14,6 +18,8 @@ class CommentViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.request.method == "POST":
             return CommentCreateSerializer
+        if self.action == "replies":
+            return CommentDetailSerializer
         return CommentListSerializer
 
     def get_queryset(self):
@@ -38,6 +44,13 @@ class CommentViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         pass
+
+    @action(detail=True, methods=["get"])
+    def replies(self, request, pk=None):
+        comment = self.get_object()
+        replies = comment.replies.all().order_by("id")
+        serializer = CommentDetailSerializer(replies, many=True, context=self.get_serializer_context())
+        return Response(serializer.data)
 
 
 @api_view(["GET"])

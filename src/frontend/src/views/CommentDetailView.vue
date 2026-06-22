@@ -29,6 +29,7 @@ onMounted(async () => {
       found = await store.fetchComment(id)
       store.comments.unshift(found)
     }
+    found.replies = await store.fetchReplies(id)
     comment.value = found
   } catch (err) {
     error.value = err.message || 'Failed to load comment'
