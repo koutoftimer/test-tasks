@@ -30,16 +30,22 @@ api.interceptors.response.use(
     ) {
       const { useAuthStore } = await import('./auth.js')
       const auth = useAuthStore()
+
       if (!auth.refreshToken) {
         auth.clearTokens()
-        return Promise.reject(error)
+        delete originalRequest.headers.Authorization
+        return api(originalRequest)
       }
 
       if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          pendingRequests.push({ resolve, reject })
+        return new Promise((resolve) => {
+          pendingRequests.push({ resolve })
         }).then((token) => {
-          originalRequest.headers.Authorization = `Bearer ${token}`
+          if (token) {
+            originalRequest.headers.Authorization = `Bearer ${token}`
+          } else {
+            delete originalRequest.headers.Authorization
+          }
           return api(originalRequest)
         })
       }
@@ -59,9 +65,10 @@ api.interceptors.response.use(
         return api(originalRequest)
       } catch {
         auth.clearTokens()
-        pendingRequests.forEach((p) => p.reject(error))
+        delete originalRequest.headers.Authorization
+        pendingRequests.forEach((p) => p.resolve(null))
         pendingRequests = []
-        return Promise.reject(error)
+        return api(originalRequest)
       } finally {
         isRefreshing = false
       }
