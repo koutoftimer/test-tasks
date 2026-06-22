@@ -3,6 +3,7 @@ import os
 import re
 import uuid
 from datetime import datetime
+from typing import cast
 
 from django.conf import settings
 from django.core.files.base import ContentFile
@@ -16,12 +17,18 @@ def comment_file_path(instance, filename):
     return os.path.join("uploads", datetime.now().strftime("%Y/%m/%d"), name)
 
 
+def avatar_file_path(instance, filename):
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    name = f"{uuid.uuid4().hex}{'.' + ext if ext else ''}"
+    return os.path.join("avatars", datetime.now().strftime("%Y/%m/%d"), name)
+
+
 class Profile(models.Model):
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profile"
     )
     homepage = models.URLField(max_length=200, blank=True, null=True)
-    avatar = models.ImageField(upload_to="avatars/", blank=True, null=True)
+    avatar = models.ImageField(upload_to=avatar_file_path, blank=True, null=True)
 
     class Meta:
         verbose_name = "Profile"
@@ -66,7 +73,9 @@ class Comment(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     file = models.FileField(
-        upload_to=comment_file_path, null=True, blank=True, max_length=500
+        # it is safe, problem in django's type definition that doens't define
+        # Union[str, Callable[[Any, Any], str]] or something similar
+        upload_to=cast(str, comment_file_path), null=True, blank=True, max_length=500
     )
     file_type = models.CharField(
         max_length=10, choices=FILE_TYPE_CHOICES, null=True, blank=True
