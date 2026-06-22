@@ -70,15 +70,6 @@ class CommentViewSet(viewsets.ModelViewSet):
         sort_field = allowed_sorts.get(sort_by, "-id")
         return qs.order_by(sort_field)
 
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        comment = serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-    def perform_create(self, serializer):
-        pass
-
     @action(detail=True, methods=["get"])
     def replies(self, request, pk=None):
         try:

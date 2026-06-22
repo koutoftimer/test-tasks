@@ -150,11 +150,8 @@ class CommentCreateSerializer(serializers.Serializer):
         return value
 
     def validate_parent_id(self, value):
-        if value is not None:
-            try:
-                Comment.objects.get(id=value)
-            except Comment.DoesNotExist:
-                raise serializers.ValidationError("Parent comment does not exist.")
+        if value is not None and not Comment.objects.filter(id=value).exists():
+            raise serializers.ValidationError("Parent comment does not exist.")
         return value
 
     def validate(self, attrs):

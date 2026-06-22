@@ -7,6 +7,9 @@ const api = axios.create({
   baseURL: API_BASE + '/api',
 })
 
+let isRefreshing = false
+let pendingRequests = []
+
 api.interceptors.request.use(async (config) => {
   const { useAuthStore } = await import('./auth.js')
   const auth = useAuthStore()
@@ -15,6 +18,57 @@ api.interceptors.request.use(async (config) => {
   }
   return config
 })
+
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config
+    if (
+      error.response?.status === 401 &&
+      error.response?.data?.code === 'token_not_valid' &&
+      !originalRequest._retry
+    ) {
+      const { useAuthStore } = await import('./auth.js')
+      const auth = useAuthStore()
+      if (!auth.refreshToken) {
+        auth.clearTokens()
+        return Promise.reject(error)
+      }
+
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          pendingRequests.push({ resolve, reject })
+        }).then((token) => {
+          originalRequest.headers.Authorization = `Bearer ${token}`
+          return api(originalRequest)
+        })
+      }
+
+      originalRequest._retry = true
+      isRefreshing = true
+
+      try {
+        const res = await axios.post(API_BASE + '/api/auth/jwt/refresh/', {
+          refresh: auth.refreshToken,
+        })
+        const newToken = res.data.access
+        auth.setTokens(newToken, auth.refreshToken)
+        originalRequest.headers.Authorization = `Bearer ${newToken}`
+        pendingRequests.forEach((p) => p.resolve(newToken))
+        pendingRequests = []
+        return api(originalRequest)
+      } catch {
+        auth.clearTokens()
+        pendingRequests.forEach((p) => p.reject(error))
+        pendingRequests = []
+        return Promise.reject(error)
+      } finally {
+        isRefreshing = false
+      }
+    }
+    return Promise.reject(error)
+  }
+)
 
 export const useCommentStore = defineStore('comment', {
   state: () => ({

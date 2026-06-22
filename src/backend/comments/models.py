@@ -78,6 +78,8 @@ class Comment(models.Model):
         ordering = ["id"]
 
     def __str__(self):
+        if not self.profile_id:
+            return f"Comment #{self.id} by Anonymous"
         return f"Comment #{self.id} by {self.profile.user.username}"
 
     def save(self, *args, **kwargs):
