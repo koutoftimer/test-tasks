@@ -18,7 +18,7 @@ class CommentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = Comment.objects.filter(parent=None).select_related("profile__user")
-        sort_by = self.request.query_params.get("sort", "-created_at")
+        sort_by = self.request.query_params.get("sort", "-id")
         allowed_sorts = {
             "user_name": "profile__user__username",
             "-user_name": "-profile__user__username",
@@ -26,8 +26,10 @@ class CommentViewSet(viewsets.ModelViewSet):
             "-email": "-profile__user__email",
             "created_at": "created_at",
             "-created_at": "-created_at",
+            "id": "id",
+            "-id": "-id",
         }
-        sort_field = allowed_sorts.get(sort_by, "-created_at")
+        sort_field = allowed_sorts.get(sort_by, "-id")
         return qs.order_by(sort_field)
 
     def create(self, request, *args, **kwargs):

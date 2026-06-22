@@ -74,7 +74,7 @@ class Comment(models.Model):
     class Meta:
         verbose_name = "Comment"
         verbose_name_plural = "Comments"
-        ordering = ["-created_at"]
+        ordering = ["id"]
 
     def __str__(self):
         return f"Comment #{self.id} by {self.profile.user.username}"
