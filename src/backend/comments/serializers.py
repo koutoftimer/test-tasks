@@ -9,17 +9,10 @@ from .models import Comment, Profile
 
 class ProfileSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source="user.username", read_only=True)
-    avatar = serializers.SerializerMethodField()
 
     class Meta:
         model = Profile
         fields = ["id", "username", "homepage", "avatar"]
-
-    def get_avatar(self, obj):
-        if obj.avatar:
-            return f"{settings.API_BASE_URL}{obj.avatar.url}"
-        return None
-
 
 class ProfileDetailSerializer(ProfileSerializer):
     email = serializers.EmailField(source="user.email", read_only=True)
@@ -35,7 +28,6 @@ class CommentListSerializer(serializers.ModelSerializer):
     dislike_count = serializers.SerializerMethodField()
     is_liked = serializers.SerializerMethodField()
     is_disliked = serializers.SerializerMethodField()
-    file = serializers.SerializerMethodField()
 
     class Meta:
         model = Comment
@@ -53,11 +45,6 @@ class CommentListSerializer(serializers.ModelSerializer):
             "is_liked",
             "is_disliked",
         ]
-
-    def get_file(self, obj):
-        if obj.file:
-            return f"{settings.API_BASE_URL}{obj.file.url}"
-        return None
 
     def get_reply_count(self, obj):
         return obj.replies.count()
@@ -86,7 +73,6 @@ class CommentDetailSerializer(serializers.ModelSerializer):
     dislike_count = serializers.SerializerMethodField()
     is_liked = serializers.SerializerMethodField()
     is_disliked = serializers.SerializerMethodField()
-    file = serializers.SerializerMethodField()
 
     class Meta:
         model = Comment
@@ -104,11 +90,6 @@ class CommentDetailSerializer(serializers.ModelSerializer):
             "is_liked",
             "is_disliked",
         ]
-
-    def get_file(self, obj):
-        if obj.file:
-            return f"{settings.API_BASE_URL}{obj.file.url}"
-        return None
 
     def get_replies(self, obj):
         replies = obj.replies.all().order_by("id")

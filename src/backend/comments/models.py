@@ -3,24 +3,30 @@ import os
 import re
 import uuid
 from datetime import datetime
-from typing import cast
+from typing import cast, Callable
 
 from django.conf import settings
 from django.core.files.base import ContentFile
+from django.core.files.uploadedfile import UploadedFile
 from django.db import models
+
 from PIL import Image
 
 
-def comment_file_path(instance, filename):
-    _, ext = os.path.splitext(filename)
-    name = f"{uuid.uuid4().hex}{ext.lower()}"
-    return os.path.join("uploads", datetime.now().strftime("%Y/%m/%d"), name)
+# TODO: Maybe functools.partial will be handier
+def upload_file_path(prefix: str) -> Callable[[models.Model, str], str]:
+    """Return Callable that returns <prefix>/%Y/%d/%m/<uuid4>.<filename extension>"""
+    def file_path(instance: models.Model, filename: str) -> str:
+        _, ext = os.path.splitext(filename)
+        name = f"{uuid.uuid4().hex}{ext.lower()}"
+        return os.path.join(prefix, datetime.now().strftime("%Y/%m/%d"), name)
+    return file_path
 
 
-def avatar_file_path(instance, filename):
-    _, ext = os.path.splitext(filename)
-    name = f"{uuid.uuid4().hex}{ext.lower()}"
-    return os.path.join("avatars", datetime.now().strftime("%Y/%m/%d"), name)
+# Required for migrations: ./migrations/0002_add_comment_vote.py
+comment_file_path = cast(str, upload_file_path('uploads'))
+# Required for migrations: ./migrations/0004_alter_profile_avatar_and_more.py
+avatar_file_path = cast(str, upload_file_path('avatars'))
 
 
 class Profile(models.Model):
@@ -34,30 +40,29 @@ class Profile(models.Model):
         verbose_name = "Profile"
         verbose_name_plural = "Profiles"
 
+    def save(self, *args, **kwargs):
+        if self.avatar:
+            self.avatar = resize_image(self.avatar, *settings.MAX_AVATAR_SIZE)
+        super().save(*args, **kwargs)
+
     def __str__(self):
-        return self.user.username
+        return f"Profile #{self.pk} for {self.user.username}"
 
 
-def resize_image(file_obj):
-    img = Image.open(file_obj)
-    if img.format not in ("JPEG", "PNG", "GIF"):
-        return file_obj
-    max_w, max_h = settings.MAX_IMAGE_SIZE
-    if img.width > max_w or img.height > max_h:
-        ratio = min(max_w / img.width, max_h / img.height)
-        new_size = (int(img.width * ratio), int(img.height * ratio))
-        img = img.resize(new_size, Image.LANCZOS)
+def resize_image(file_obj, width, height):
+    with Image.open(file_obj) as img:
+        if img.format not in ("JPEG", "PNG", "GIF"):
+            return file_obj  # TODO: validate image format in serializer
+        img.thumbnail((width, height), Image.Resampling.LANCZOS)
         output = io.BytesIO()
         img.save(output, format=img.format)
         return ContentFile(output.getvalue(), name=file_obj.name)
-    return file_obj
 
 
 class Comment(models.Model):
-    FILE_TYPE_CHOICES = [
-        ("image", "Image"),
-        ("text", "Text file"),
-    ]
+    class FileType(models.TextChoices):
+        IMAGE = "image", "Image"
+        TEXT = "text", "Text file"
 
     profile = models.ForeignKey(
         Profile, on_delete=models.CASCADE, related_name="comments", null=True, blank=True
@@ -75,10 +80,10 @@ class Comment(models.Model):
     file = models.FileField(
         # it is safe, problem in django's type definition that doens't define
         # Union[str, Callable[[Any, Any], str]] or something similar
-        upload_to=cast(str, comment_file_path), null=True, blank=True, max_length=500
+        upload_to=comment_file_path, null=True, blank=True, max_length=500
     )
     file_type = models.CharField(
-        max_length=10, choices=FILE_TYPE_CHOICES, null=True, blank=True
+        max_length=10, choices=FileType.choices, null=True, blank=True
     )
 
     class Meta:
@@ -93,8 +98,10 @@ class Comment(models.Model):
 
     def save(self, *args, **kwargs):
         self.strip_unallowed_html()
-        if self.file and self.file_type == "image":
-            self.file = resize_image(self.file)
+        is_image = self.file and self.file_type == self.FileType.IMAGE
+        fresh_upload = is_image and isinstance(self.file.file, UploadedFile)
+        if fresh_upload:
+            self.file = resize_image(self.file, *settings.MAX_IMAGE_SIZE)
         super().save(*args, **kwargs)
 
     def strip_unallowed_html(self):

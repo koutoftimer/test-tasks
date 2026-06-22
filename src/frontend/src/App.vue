@@ -54,6 +54,7 @@
 <script setup>
 import { onMounted, ref, watch } from 'vue'
 import { useAuthStore } from './stores/auth.js'
+import { resizeAvatar } from './composables/resizeImage.js'
 import { useCommentStore } from './stores/comment.js'
 import Lightbox from './components/Lightbox.vue'
 import PreviewModal from './components/PreviewModal.vue'
@@ -122,10 +123,11 @@ async function handleUpdateProfile() {
   profileError.value = ''
   profileSuccess.value = ''
   try {
+    const avatarFile = profileAvatar.value ? await resizeAvatar(profileAvatar.value) : null
     await auth.updateProfile({
       email: profileEmail.value,
       homepage: profileHomepage.value,
-      avatar: profileAvatar.value,
+      avatar: avatarFile,
     })
     profileSuccess.value = 'Profile updated'
     setTimeout(() => { profileSuccess.value = '' }, 3000)

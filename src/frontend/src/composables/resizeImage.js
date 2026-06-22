@@ -1,5 +1,6 @@
 const MAX_W = 320
 const MAX_H = 240
+const AVATAR_SIZE = 24
 
 export function resizeImage(file) {
   return new Promise((resolve, reject) => {
@@ -21,6 +22,33 @@ export function resizeImage(file) {
       canvas.toBlob((blob) => {
         if (!blob) {
           reject(new Error('Failed to resize image'))
+          return
+        }
+        const resized = new File([blob], file.name, {
+          type: file.type,
+          lastModified: Date.now(),
+        })
+        resolve(resized)
+      }, file.type)
+    }
+    img.onerror = () => reject(new Error('Failed to load image'))
+    img.src = URL.createObjectURL(file)
+  })
+}
+
+export function resizeAvatar(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = AVATAR_SIZE
+      canvas.height = AVATAR_SIZE
+      const ctx = canvas.getContext('2d')
+      ctx.imageSmoothingQuality = 'high'
+      ctx.drawImage(img, 0, 0, AVATAR_SIZE, AVATAR_SIZE)
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          reject(new Error('Failed to resize avatar'))
           return
         }
         const resized = new File([blob], file.name, {

@@ -142,6 +142,7 @@ CAPTCHA_LENGTH = 4
 
 # File uploads
 MAX_IMAGE_SIZE = (320, 240)
+MAX_AVATAR_SIZE = (24, 24)
 MAX_TEXT_FILE_SIZE = 100 * 1024
 
 # Allowed HTML tags
