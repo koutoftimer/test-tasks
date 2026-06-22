@@ -1,0 +1,20 @@
+FROM ubuntu:latest
+
+RUN apt-get update && apt-get install -y \
+    python3 python3-pip python3-venv \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python3 -m venv /venv
+ENV PATH="/venv/bin:$PATH"
+
+COPY requirements/ /requirements/
+RUN pip install --no-cache-dir -r /requirements/prod-frozen.txt
+
+WORKDIR /app
+COPY src/backend/ /app/
+
+RUN python manage.py collectstatic --noinput
+
+EXPOSE 8002
+
+CMD ["gunicorn", "comments.wsgi:application", "--bind", "0.0.0.0:8002", "--workers", "4"]

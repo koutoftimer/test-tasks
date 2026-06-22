@@ -127,11 +127,17 @@ DJOSER = {
 
 # CORS
 CORS_ALLOW_ALL_ORIGINS = DEBUG
-CORS_ALLOWED_ORIGINS = [
+
+default_cors = [
     "http://dev.comments:5173",
     "http://web.comments:8002",
     "http://localhost:5173",
 ]
+CORS_ALLOWED_ORIGINS = (
+    os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",")
+    if os.environ.get("CORS_ALLOWED_ORIGINS")
+    else default_cors
+)
 
 # Captcha
 CAPTCHA_CHALLENGE_FUNCT = "captcha.helpers.random_char_challenge"
