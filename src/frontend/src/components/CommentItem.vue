@@ -14,13 +14,13 @@
       </div>
       <div class="comment-actions">
         <span v-if="voteError" class="vote-error">{{ voteError }}</span>
-        <button class="btn-vote" :class="{ active: comment.user_vote === 'like' }" @click="handleVote('like')">
+        <button class="btn-vote" :class="{ active: comment.is_liked }" @click="handleVote('like')">
           <svg class="vote-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
           </svg>
           <span class="vote-count">{{ comment.like_count }}</span>
         </button>
-        <button class="btn-vote" :class="{ active: comment.user_vote === 'dislike' }" @click="handleVote('dislike')">
+        <button class="btn-vote" :class="{ active: comment.is_disliked }" @click="handleVote('dislike')">
           <svg class="vote-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10zM17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17" />
           </svg>
@@ -93,15 +93,17 @@ async function handleVote(voteType) {
   }
   voteError.value = ''
   try {
-    const current = props.comment.user_vote
-    if (current === voteType) {
+    const isActive = voteType === 'like' ? props.comment.is_liked : props.comment.is_disliked
+    if (isActive) {
       const data = await store.removeVote(props.comment.id)
-      props.comment.user_vote = null
+      props.comment.is_liked = false
+      props.comment.is_disliked = false
       props.comment.like_count = data.like_count
       props.comment.dislike_count = data.dislike_count
     } else {
       const data = await store.voteComment(props.comment.id, voteType)
-      props.comment.user_vote = data.vote
+      props.comment.is_liked = voteType === 'like'
+      props.comment.is_disliked = voteType === 'dislike'
       props.comment.like_count = data.like_count
       props.comment.dislike_count = data.dislike_count
     }

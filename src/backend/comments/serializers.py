@@ -19,7 +19,8 @@ class CommentListSerializer(serializers.ModelSerializer):
     reply_count = serializers.SerializerMethodField()
     like_count = serializers.SerializerMethodField()
     dislike_count = serializers.SerializerMethodField()
-    user_vote = serializers.SerializerMethodField()
+    is_liked = serializers.SerializerMethodField()
+    is_disliked = serializers.SerializerMethodField()
     file = serializers.SerializerMethodField()
 
     class Meta:
@@ -35,7 +36,8 @@ class CommentListSerializer(serializers.ModelSerializer):
             "reply_count",
             "like_count",
             "dislike_count",
-            "user_vote",
+            "is_liked",
+            "is_disliked",
         ]
 
     def get_file(self, obj):
@@ -56,11 +58,11 @@ class CommentListSerializer(serializers.ModelSerializer):
             return obj.dislike_count
         return obj.votes.filter(vote=False).count()
 
-    def get_user_vote(self, obj):
-        votes = getattr(obj, "_user_votes", None)
-        if votes:
-            return votes[0].vote
-        return None
+    def get_is_liked(self, obj):
+        return getattr(obj, "is_liked", False)
+
+    def get_is_disliked(self, obj):
+        return getattr(obj, "is_disliked", False)
 
 
 class CommentDetailSerializer(serializers.ModelSerializer):
@@ -68,7 +70,8 @@ class CommentDetailSerializer(serializers.ModelSerializer):
     replies = serializers.SerializerMethodField()
     like_count = serializers.SerializerMethodField()
     dislike_count = serializers.SerializerMethodField()
-    user_vote = serializers.SerializerMethodField()
+    is_liked = serializers.SerializerMethodField()
+    is_disliked = serializers.SerializerMethodField()
     file = serializers.SerializerMethodField()
 
     class Meta:
@@ -84,7 +87,8 @@ class CommentDetailSerializer(serializers.ModelSerializer):
             "replies",
             "like_count",
             "dislike_count",
-            "user_vote",
+            "is_liked",
+            "is_disliked",
         ]
 
     def get_file(self, obj):
@@ -110,11 +114,11 @@ class CommentDetailSerializer(serializers.ModelSerializer):
             return obj.dislike_count
         return obj.votes.filter(vote=False).count()
 
-    def get_user_vote(self, obj):
-        votes = getattr(obj, "_user_votes", None)
-        if votes:
-            return votes[0].vote
-        return None
+    def get_is_liked(self, obj):
+        return getattr(obj, "is_liked", False)
+
+    def get_is_disliked(self, obj):
+        return getattr(obj, "is_disliked", False)
 
 
 class CommentCreateSerializer(serializers.Serializer):

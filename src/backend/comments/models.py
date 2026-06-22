@@ -143,6 +143,9 @@ class CommentVote(models.Model):
         unique_together = ("comment", "user")
         verbose_name = "Comment Vote"
         verbose_name_plural = "Comment Votes"
+        indexes = [
+            models.Index(fields=["comment", "user", "vote"]),
+        ]
 
     def __str__(self):
         status = "like" if self.vote is True else "dislike" if self.vote is False else "removed"

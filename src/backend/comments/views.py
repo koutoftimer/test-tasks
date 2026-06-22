@@ -1,6 +1,6 @@
 from captcha.helpers import captcha_image_url
 from captcha.models import CaptchaStore
-from django.db.models import Count, Prefetch, Q
+from django.db.models import BooleanField, Count, Exists, OuterRef, Q, Value
 from rest_framework import status, viewsets
 from rest_framework.decorators import action, api_view
 from rest_framework.permissions import IsAuthenticated
@@ -15,7 +15,7 @@ from .serializers import (
 
 
 class CommentViewSet(viewsets.ModelViewSet):
-    http_method_names = ["get", "post", "head", "options"]
+    http_method_names = ["get", "post", "delete", "head", "options"]
 
     def _get_current_user(self):
         user = self.request.user
@@ -39,12 +39,15 @@ class CommentViewSet(viewsets.ModelViewSet):
     def _annotate_votes(self, qs):
         user = self._get_current_user()
         if user:
-            qs = qs.prefetch_related(
-                Prefetch(
-                    "votes",
-                    queryset=CommentVote.objects.filter(user=user),
-                    to_attr="_user_votes",
-                )
+            user_votes = CommentVote.objects.filter(comment=OuterRef("pk"), user=user)
+            qs = qs.annotate(
+                is_liked=Exists(user_votes.filter(vote=True)),
+                is_disliked=Exists(user_votes.filter(vote=False)),
+            )
+        else:
+            qs = qs.annotate(
+                is_liked=Value(False, output_field=BooleanField()),
+                is_disliked=Value(False, output_field=BooleanField()),
             )
         return qs.annotate(
             like_count=Count("votes", filter=Q(votes__vote=True)),
