@@ -49,6 +49,7 @@ services:
       - static:/app/static:ro
     depends_on:
       api:
+        condition: service_started
       frontend-builder:
         condition: service_completed_successfully
     restart: unless-stopped
