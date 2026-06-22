@@ -72,6 +72,7 @@ provide('openPreview', (data) => { previewData.value = data })
 provide('captchaKey', captchaKey)
 provide('captchaUrl', captchaUrl)
 provide('refreshCaptchaKey', refreshCaptchaKey)
+provide('addReply', addReply)
 
 function refreshCaptchaKey() {
   fetchCaptcha().then((data) => {
@@ -85,10 +86,25 @@ onMounted(() => {
   refreshCaptchaKey()
 })
 
-function handleCommentCreated() {
+function handleCommentCreated(comment) {
   showForm.value = false
-  fetchComments()
+  comments.value.unshift(comment)
   refreshCaptchaKey()
+}
+
+function addReply(parentId, reply) {
+  function findParent(items) {
+    for (const item of items) {
+      if (item.id === parentId) {
+        item.replies.push(reply)
+        return
+      }
+      if (item.replies && item.replies.length) {
+        findParent(item.replies)
+      }
+    }
+  }
+  findParent(comments.value)
 }
 
 function handleSort(field) {

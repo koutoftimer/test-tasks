@@ -21,7 +21,7 @@
     <CommentForm
       v-if="showReplyForm"
       :parent-id="comment.id"
-      @comment-created="showReplyForm = false"
+      @comment-created="handleReplyCreated"
       @cancel="showReplyForm = false"
     />
     <CommentItem
@@ -37,18 +37,24 @@
 import { inject, ref } from 'vue'
 import CommentForm from './CommentForm.vue'
 
-defineProps({
+const props = defineProps({
   comment: Object,
   depth: { type: Number, default: 0 },
 })
 
 const showReplyForm = ref(false)
 const openLightbox = inject('openLightbox')
+const addReply = inject('addReply', () => {})
 
 function formatDate(dateStr) {
   if (!dateStr) return ''
   const d = new Date(dateStr)
   return d.toLocaleString()
+}
+
+function handleReplyCreated(reply) {
+  addReply(props.comment.id, reply)
+  showReplyForm.value = false
 }
 
 function sanitizeHtml(text) {

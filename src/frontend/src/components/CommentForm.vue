@@ -158,7 +158,7 @@ async function handleSubmit() {
   submitting.value = true; submitError.value = ''
   try {
     const { createComment } = useComments()
-    await createComment({
+    const response = await createComment({
       username: form.username,
       email: form.email,
       homepage: form.homepage,
@@ -173,7 +173,7 @@ async function handleSubmit() {
     const fileInput = document.querySelector('input[type="file"]')
     if (fileInput) fileInput.value = ''
     refreshCaptchaKey()
-    emit('comment-created')
+    emit('comment-created', response)
   } catch (err) {
     submitError.value = err.message
   } finally {
