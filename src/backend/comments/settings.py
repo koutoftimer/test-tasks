@@ -1,4 +1,6 @@
 import os
+import re
+from datetime import timedelta
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -97,8 +99,20 @@ REST_FRAMEWORK = {
 }
 
 # JWT
+def _parse_duration(value):
+    match = re.match(r"^(\d+)\s*(minute|min|m|hour|h|day|d)s?$", value.strip(), re.IGNORECASE)
+    if not match:
+        raise ValueError(f"Invalid duration: {value}")
+    num = int(match.group(1))
+    unit = match.group(2).lower()
+    units = {"minute": "minutes", "min": "minutes", "m": "minutes",
+             "hour": "hours", "h": "hours", "day": "days", "d": "days"}
+    return timedelta(**{units[unit]: num})
+
 SIMPLE_JWT = {
     "AUTH_HEADER_TYPES": ("Bearer",),
+    "ACCESS_TOKEN_LIFETIME": _parse_duration(os.environ.get("JWT_ACCESS_TOKEN_LIFETIME", "5 minutes")),
+    "REFRESH_TOKEN_LIFETIME": _parse_duration(os.environ.get("JWT_REFRESH_TOKEN_LIFETIME", "1 day")),
 }
 
 # Djoser
