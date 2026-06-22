@@ -168,7 +168,8 @@ function sanitizeHtml(text) {
 .comment-text :deep(code) { background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-size: 13px; }
 .comment-text :deep(i) { font-style: italic; }
 .comment-text :deep(strong) { font-weight: 700; }
-.comment-file { margin-bottom: 8px; }
+.comment-files { display: flex; flex-wrap: wrap; gap: 8px; }
+.comment-file { }
 .comment-image { max-width: 320px; max-height: 240px; border-radius: 4px; cursor: pointer; border: 1px solid #e0e0e0; }
 .file-link { color: #1a73e8; font-size: 13px; }
 .comment-actions { display: flex; align-items: center; gap: 12px; padding-top: 6px; border-top: 1px solid #f0f0f0; }

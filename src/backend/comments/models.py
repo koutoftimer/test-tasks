@@ -74,6 +74,7 @@ class CommentAttachment(models.Model):
     comment = models.ForeignKey(
         "Comment", on_delete=models.CASCADE, related_name="attachments"
     )
+    # TODO: add separate field for thumbnails to allow high resolution image attachments
     file = models.FileField(
         upload_to=attachment_file_path, null=True, blank=True, max_length=500
     )
