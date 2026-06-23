@@ -13,6 +13,7 @@ router.register(r"profile", views.ProfileViewSet, basename="profile")
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/", include(router.urls)),
+    path("api/sanitize/", views.sanitize, name="sanitize"),
     path("api/captcha/", views.captcha, name="captcha"),
     path("captcha/", include("captcha.urls")),
     path("api/auth/", include("djoser.urls")),

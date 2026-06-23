@@ -99,6 +99,18 @@ class CommentAttachment(models.Model):
         super().save(*args, **kwargs)
 
 
+def sanitize_text(text):
+    allowed_tags = settings.ALLOWED_HTML_TAGS
+    sanitizer = Sanitizer({
+        "tags": set(allowed_tags.keys()),
+        "attributes": {tag: set(attrs) for tag, attrs in allowed_tags.items()},
+        "empty": {"br"},
+        "separate": set(allowed_tags.keys()) - {"br"},
+        "sanitize_href": lambda href: href,
+    })
+    return sanitizer.sanitize(text)
+
+
 class Comment(models.Model):
     profile = models.ForeignKey(
         Profile, on_delete=models.CASCADE, related_name="comments", null=True, blank=True
@@ -129,15 +141,7 @@ class Comment(models.Model):
         super().save(*args, **kwargs)
 
     def strip_unallowed_html(self):
-        allowed_tags = settings.ALLOWED_HTML_TAGS
-        sanitizer = Sanitizer({
-            "tags": set(allowed_tags.keys()),
-            "attributes": {tag: set(attrs) for tag, attrs in allowed_tags.items()},
-            "empty": set(),
-            "separate": set(allowed_tags.keys()),
-            "sanitize_href": lambda href: href,
-        })
-        self.text = sanitizer.sanitize(self.text)
+        self.text = sanitize_text(self.text)
 
 
 class CommentVote(models.Model):

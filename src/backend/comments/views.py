@@ -7,7 +7,7 @@ from rest_framework.decorators import action, api_view
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .models import Comment, CommentVote, Profile
+from .models import Comment, CommentVote, Profile, sanitize_text
 from .serializers import (
     CommentCreateSerializer,
     CommentDetailSerializer,
@@ -125,6 +125,11 @@ class CommentViewSet(viewsets.ModelViewSet):
         return Response(
             {"vote": vote_type, "like_count": like_count, "dislike_count": dislike_count}
         )
+
+
+@api_view(["POST"])
+def sanitize(request):
+    return Response({"text": sanitize_text(request.data.get("text", ""))})
 
 
 @api_view(["GET"])

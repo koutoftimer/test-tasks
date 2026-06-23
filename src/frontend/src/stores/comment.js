@@ -243,6 +243,11 @@ export const useCommentStore = defineStore('comment', {
       this.lightboxImage = null
     },
 
+    async sanitizeHtml(text) {
+      const response = await api.post('/sanitize/', { text })
+      return response.data.text
+    },
+
     openPreview(data) {
       this.previewData = data
     },

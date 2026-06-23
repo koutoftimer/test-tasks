@@ -119,11 +119,12 @@ function removeFile(index) {
 
 async function handlePreview() {
   const html = getEditorHTML()
+  const sanitized = await store.sanitizeHtml(html)
   const firstFile = form.files[0] || null
   const previewFile = firstFile && firstFile.type.startsWith('image/') ? await resizeImage(firstFile) : firstFile
   store.openPreview({
     username: auth.user?.username || 'Anonymous',
-    text: html,
+    text: sanitized,
     file: previewFile ? URL.createObjectURL(previewFile) : null,
     fileType: previewFile ? previewFile.name.split('.').pop().toLowerCase() : null,
   })
