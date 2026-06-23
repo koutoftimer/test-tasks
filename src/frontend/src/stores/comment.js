@@ -199,22 +199,30 @@ export const useCommentStore = defineStore('comment', {
     },
 
     addReply(parentId, reply) {
+      const addTo = (item) => {
+        if (!item.replies) item.replies = []
+        item.replies.push(reply)
+        if (item.reply_count !== undefined) item.reply_count++
+      }
+
       const findParent = (items) => {
         for (const item of items) {
           if (item.id === parentId) {
-            if (!item.replies) item.replies = []
-            item.replies.push(reply)
-            if (item.reply_count !== undefined) item.reply_count++
+            addTo(item)
             return true
           }
-          if (item.replies && item.replies.length) {
-            const found = findParent(item.replies)
-            if (found) return true
+          if (item.replies?.length) {
+            if (findParent(item.replies)) return true
           }
         }
         return false
       }
+
       findParent(this.comments)
+
+      if (this.currentComment?.id === parentId) {
+        addTo(this.currentComment)
+      }
     },
 
     async voteComment(commentId, voteType) {

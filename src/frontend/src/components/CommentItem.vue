@@ -53,6 +53,7 @@
       :comment="reply"
       :depth="depth + 1"
       :show-replies="true"
+      @reply-created="(id) => emit('reply-created', id)"
     />
   </div>
 </template>
@@ -70,7 +71,7 @@ const props = defineProps({
   showReplies: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['select'])
+const emit = defineEmits(['select', 'reply-created'])
 
 const store = useCommentStore()
 const auth = useAuthStore()
@@ -87,8 +88,9 @@ function formatDate(dateStr) {
 }
 
 function handleReplyCreated(reply) {
-  store.addReply(props.comment.id, reply)
   showReplyForm.value = false
+  emit('reply-created', props.comment.id)
+  store.addReply(props.comment.id, reply)
 }
 
 async function handleVote(voteType) {
