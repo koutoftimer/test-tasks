@@ -1,6 +1,10 @@
 Overview
 ========
 
+This is SPA appliction that allows to leave comments and post replies. It
+allows to attach small images and text files. Registered users can like/dislike
+posts and configure profile (set avatar and homepage URL) on top of that.
+
 Deployed at https://comments.ruslan-kovtun.pp.ua/
 
 [![Watch demo on YouTube](https://img.youtube.com/vi/4cERm6zf4rk/0.jpg)](https://www.youtube.com/watch?v=4cERm6zf4rk)
