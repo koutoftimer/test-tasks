@@ -1,6 +1,8 @@
 Overview
 ========
 
+[![Watch the video](https://youtu.be/4cERm6zf4rk)](https://youtu.be/4cERm6zf4rk)
+
 Quick start
 ===========
 
@@ -29,5 +31,5 @@ $ xdg-open http://web.comments:8002
 TODO
 ====
 
-[*] Use rich text editor: https://vueup.github.io/vue-quill/
-[ ] WS: likes, new posts
+- [x] Use rich text editor: https://vueup.github.io/vue-quill/
+- [ ] WS: likes, new posts
