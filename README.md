@@ -1,7 +1,8 @@
 Overview
 ========
 
-[![Watch the video](https://youtu.be/4cERm6zf4rk)](https://youtu.be/4cERm6zf4rk)
+[Watch demo on YouTube](https://youtu.be/4cERm6zf4rk)
+[![Main](https://img.youtube.com/vi/4cERm6zf4rk/0.jpg)](https://www.youtube.com/watch?v=4cERm6zf4rk)
 
 Quick start
 ===========
