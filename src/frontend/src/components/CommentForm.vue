@@ -4,8 +4,7 @@
     <form @submit.prevent="handleSubmit">
       <div class="form-group">
         <label>Text *</label>
-        <HtmlToolbar @insert="insertTag" />
-        <textarea ref="textareaRef" v-model="form.text" rows="5" placeholder="Write your comment..." @input="validateText"></textarea>
+        <QuillEditor v-model:content="form.text" content-type="html" :toolbar="toolbar" @update:content="validateText" />
         <span v-if="errors.text" class="error">{{ errors.text }}</span>
       </div>
       <div class="form-group">
@@ -42,14 +41,20 @@ import { reactive, ref, onMounted } from 'vue'
 import { useAuthStore } from '../stores/auth.js'
 import { useCommentStore } from '../stores/comment.js'
 import { resizeImage } from '../composables/resizeImage.js'
-import HtmlToolbar from './HtmlToolbar.vue'
+import { QuillEditor } from '@vueup/vue-quill'
+import '@vueup/vue-quill/dist/vue-quill.snow.css'
 
 const emit = defineEmits(['comment-created', 'cancel'])
 const props = defineProps({ parentId: { type: Number, default: null } })
 const store = useCommentStore()
 const auth = useAuthStore()
 
-const textareaRef = ref(null)
+const toolbar = [
+  ['bold', 'italic', 'code'],
+  ['link'],
+  ['clean'],
+]
+
 const form = reactive({ text: '', files: [] })
 const errors = reactive({ text: '', captcha: '' })
 const fileError = ref('')
@@ -70,8 +75,14 @@ onMounted(async () => {
   }
 })
 
+function stripHtml(html) {
+  const div = document.createElement('div')
+  div.innerHTML = html
+  return div.textContent || ''
+}
+
 function validateText() {
-  if (!form.text.trim()) errors.text = 'Text is required'
+  if (!stripHtml(form.text).trim()) errors.text = 'Text is required'
   else errors.text = ''
 }
 
@@ -100,27 +111,6 @@ async function handleFilesChange(e) {
 
 function removeFile(index) {
   form.files.splice(index, 1)
-}
-
-function insertTag(tag) {
-  const textarea = textareaRef.value
-  if (!textarea) return
-  const start = textarea.selectionStart
-  const end = textarea.selectionEnd
-  const selected = form.text.substring(start, end)
-  let tagOpen, tagClose
-  switch (tag) {
-    case 'i': tagOpen = '<i>'; tagClose = '</i>'; break
-    case 'strong': tagOpen = '<strong>'; tagClose = '</strong>'; break
-    case 'code': tagOpen = '<code>'; tagClose = '</code>'; break
-    case 'a':
-      const href = prompt('Enter URL:')
-      if (!href) return
-      tagOpen = `<a href="${href}">`; tagClose = '</a>'
-      break
-    default: return
-  }
-  form.text = form.text.substring(0, start) + tagOpen + selected + tagClose + form.text.substring(end)
 }
 
 async function handlePreview() {
@@ -178,11 +168,10 @@ async function handleSubmit() {
 h2 { font-size: 18px; margin-bottom: 16px; color: #1a1a2e; }
 .form-group { margin-bottom: 14px; }
 label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; color: #555; }
-input[type="text"], input[type="email"], input[type="url"], textarea {
+input[type="text"], input[type="email"], input[type="url"] {
   width: 100%; padding: 8px 12px; border: 1px solid #d0d0d0; border-radius: 4px; font-size: 14px; font-family: inherit; transition: border-color 0.2s;
 }
-input:focus, textarea:focus { outline: none; border-color: #1a73e8; box-shadow: 0 0 0 2px rgba(26,115,232,0.15); }
-textarea { resize: vertical; }
+input:focus { outline: none; border-color: #1a73e8; box-shadow: 0 0 0 2px rgba(26,115,232,0.15); }
 .error { display: block; color: #d93025; font-size: 12px; margin-top: 2px; }
 .form-actions { display: flex; gap: 12px; margin-top: 16px; }
 .btn-preview { background: #fff; border: 1px solid #1a73e8; color: #1a73e8; padding: 10px 24px; border-radius: 4px; font-size: 14px; font-weight: 500; }
@@ -195,6 +184,9 @@ textarea { resize: vertical; }
 .submit-error { margin-top: 12px; padding: 8px 12px; background: #fce8e6; border-radius: 4px; color: #d93025; font-size: 13px; }
 .reply-form { margin: 12px 0 8px 16px; padding: 16px; background: #f8f9fa; border-radius: 6px; border: 1px solid #e8e8e8; }
 .reply-form h2 { font-size: 15px; margin-bottom: 12px; }
+:deep(.ql-editor) { min-height: 120px; font-size: 14px; line-height: 1.6; }
+:deep(.ql-toolbar) { border-radius: 4px 4px 0 0; }
+:deep(.ql-container) { border-radius: 0 0 4px 4px; }
 .captcha-row { display: flex; align-items: center; gap: 12px; }
 .captcha-image { border: 1px solid #d0d0d0; border-radius: 4px; }
 .captcha-input { width: 140px; padding: 8px 12px; border: 1px solid #d0d0d0; border-radius: 4px; font-size: 14px; }
