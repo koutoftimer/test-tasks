@@ -1,6 +1,5 @@
 import io
 import os
-import re
 import uuid
 from datetime import datetime
 from typing import cast, Callable
@@ -9,6 +8,7 @@ from django.conf import settings
 from django.core.files.base import ContentFile
 from django.core.files.uploadedfile import UploadedFile
 from django.db import models
+from html_sanitizer import Sanitizer
 
 from PIL import Image
 
@@ -130,46 +130,14 @@ class Comment(models.Model):
 
     def strip_unallowed_html(self):
         allowed_tags = settings.ALLOWED_HTML_TAGS
-        tag_pattern = re.compile(r"<\/?(\w+)([^>]*)>")
-
-        def replace_tag(match):
-            tag_name = match.group(1).lower()
-            if tag_name not in allowed_tags:
-                return ""
-            attrs_str = match.group(2).strip()
-            if not attrs_str:
-                return f"<{tag_name}>"
-            allowed_attrs = allowed_tags[tag_name]
-            attr_pattern = re.compile(r'(\w+)=(["\'])(.*?)\2')
-            clean_attrs = []
-            for attr_match in attr_pattern.finditer(attrs_str):
-                attr_name = attr_match.group(1).lower()
-                if attr_name in allowed_attrs:
-                    clean_attrs.append(attr_match.group(0))
-            attrs = " " + " ".join(clean_attrs) if clean_attrs else ""
-            return f"<{tag_name}{attrs}>"
-
-        self.text = tag_pattern.sub(replace_tag, self.text)
-
-        allowed_tag_names = set(allowed_tags.keys())
-        stack = []
-        for m in re.finditer(r"<\/?(\w+)", self.text):
-            tag = m.group(1).lower()
-            if tag not in allowed_tag_names:
-                continue
-            full = self.text[m.start() : m.end()]
-            if m.group(0).startswith("</"):
-                if stack and stack[-1] == tag:
-                    stack.pop()
-                continue
-            if not self.text[m.end() : m.end() + 1] == ">":
-                continue
-            opening_tag = self.text[m.start() : self.text.index(">", m.start()) + 1]
-            if opening_tag.endswith("/>"):
-                continue
-            stack.append(tag)
-        for tag in reversed(stack):
-            self.text += f"</{tag}>"
+        sanitizer = Sanitizer({
+            "tags": set(allowed_tags.keys()),
+            "attributes": {tag: set(attrs) for tag, attrs in allowed_tags.items()},
+            "empty": set(),
+            "separate": set(allowed_tags.keys()),
+            "sanitize_href": lambda href: href,
+        })
+        self.text = sanitizer.sanitize(self.text)
 
 
 class CommentVote(models.Model):

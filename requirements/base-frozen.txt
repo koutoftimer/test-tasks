@@ -7,3 +7,4 @@ djoser==2.3.3
 Pillow==11.1.0
 psycopg2-binary==2.9.10
 python-dateutil==2.9.0
+html-sanitizer==2.6.0
