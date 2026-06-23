@@ -5,11 +5,14 @@ from datetime import datetime
 from typing import cast, Callable
 
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
 from django.core.files.uploadedfile import UploadedFile
 from django.db import models
-from html_sanitizer import Sanitizer
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
+from html_sanitizer import Sanitizer
 from PIL import Image
 
 
@@ -164,3 +167,10 @@ class CommentVote(models.Model):
     def __str__(self):
         status = "like" if self.vote is True else "dislike" if self.vote is False else "removed"
         return f"{status} by {self.user.username} on Comment #{self.comment_id}"
+
+
+@receiver(post_save, sender=get_user_model())
+def create_profile_for_user(sender, instance, created, **kwargs):
+    """Create Profile for new users (during registration)."""
+    if created:
+        Profile.objects.get_or_create(user=instance)
