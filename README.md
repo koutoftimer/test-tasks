@@ -1,8 +1,9 @@
 Overview
 ========
 
-[Watch demo on YouTube](https://youtu.be/4cERm6zf4rk)
-[![Main](https://img.youtube.com/vi/4cERm6zf4rk/0.jpg)](https://www.youtube.com/watch?v=4cERm6zf4rk)
+Deployed at https://comments.ruslan-kovtun.pp.ua/
+
+[![Watch demo on YouTube](https://img.youtube.com/vi/4cERm6zf4rk/0.jpg)](https://www.youtube.com/watch?v=4cERm6zf4rk)
 
 Quick start
 ===========
@@ -11,8 +12,9 @@ Quick start
 $ git clone --depth=1 <repo> <destination folder>
 $ cd <destination folder>
 $ echo "127.0.0.1 api.comments dev.comments web.comments" | sudo tee --append /etc/hosts
+$ cd ./src/frontend/ && npm i && npm run build && cd -  # or `npm run dev`
 $ podman compose -f compose-dev.yaml up --build
-$ xdg-open http://web.comments:8002
+$ xdg-open http://web.comments:8002  # or http://dev.comments:5173
 ```
 
 * `api.comments`, `dev.comments` and `web.comments` are helper domains to

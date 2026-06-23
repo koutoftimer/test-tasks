@@ -4,9 +4,8 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --host --port 5173",
+    "dev": "vite --host dev.comments --port 5173",
     "build": "vite build",
-    "preview": "vite preview --port 8002"
   },
   "dependencies": {
     "@vueup/vue-quill": "^1.2.0",
