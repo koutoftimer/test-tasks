@@ -30,7 +30,7 @@ const isImage = computed(() => {
 function sanitizeHtml(text) {
   if (!text) return ''
   const tagPattern = /<\/?(\w+)([^>]*)>/g
-  const allowedTags = { a: ['href', 'title'], code: [], i: [], strong: [] }
+  const allowedTags = { a: ['href', 'title'], br: [], code: [], i: [], p: [], strong: [] }
   return text.replace(tagPattern, (match, tagName, attrsStr) => {
     const tag = tagName.toLowerCase()
     if (!(tag in allowedTags)) return ''

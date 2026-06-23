@@ -154,8 +154,10 @@ MAX_TEXT_FILE_SIZE = 100 * 1024
 # Allowed HTML tags
 ALLOWED_HTML_TAGS = {
     "a": ["href", "title"],
+    "br": [],
     "code": [],
     "i": [],
+    "p": [],
     "strong": [],
 }
 

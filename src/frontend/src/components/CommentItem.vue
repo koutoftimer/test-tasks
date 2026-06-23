@@ -125,8 +125,10 @@ function sanitizeHtml(text) {
   if (!text) return ''
   const allowedTags = {
     a: ['href', 'title'],
+    br: [],
     code: [],
     i: [],
+    p: [],
     strong: [],
   }
   const tagPattern = /<\/?(\w+)([^>]*)>/g
@@ -169,6 +171,8 @@ function sanitizeHtml(text) {
 .comment-text :deep(a) { color: #1a73e8; }
 .comment-text :deep(code) { background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-size: 13px; }
 .comment-text :deep(i) { font-style: italic; }
+.comment-text :deep(p) { margin: 0 0 4px; }
+.comment-text :deep(p:last-child) { margin: 0; }
 .comment-text :deep(strong) { font-weight: 700; }
 .comment-files { display: flex; flex-wrap: wrap; gap: 8px; }
 .comment-file { }

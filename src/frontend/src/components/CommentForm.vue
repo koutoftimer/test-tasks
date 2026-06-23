@@ -4,7 +4,7 @@
     <form @submit.prevent="handleSubmit">
       <div class="form-group">
         <label>Text *</label>
-        <QuillEditor v-model:content="form.text" content-type="html" :toolbar="toolbar" @update:content="validateText" />
+        <QuillEditor ref="quillRef" :toolbar="toolbar" @update:content="validateText" placeholder="Write your comment..." />
         <span v-if="errors.text" class="error">{{ errors.text }}</span>
       </div>
       <div class="form-group">
@@ -49,6 +49,8 @@ const props = defineProps({ parentId: { type: Number, default: null } })
 const store = useCommentStore()
 const auth = useAuthStore()
 
+const quillRef = ref(null)
+
 const toolbar = [
   ['bold', 'italic', 'code'],
   ['link'],
@@ -75,14 +77,16 @@ onMounted(async () => {
   }
 })
 
-function stripHtml(html) {
-  const div = document.createElement('div')
-  div.innerHTML = html
-  return div.textContent || ''
+function getEditorHTML() {
+  return quillRef.value?.getHTML() || ''
+}
+
+function getEditorText() {
+  return quillRef.value?.getQuill()?.getText()?.trim() || ''
 }
 
 function validateText() {
-  if (!stripHtml(form.text).trim()) errors.text = 'Text is required'
+  if (!getEditorText()) errors.text = 'Text is required'
   else errors.text = ''
 }
 
@@ -114,11 +118,12 @@ function removeFile(index) {
 }
 
 async function handlePreview() {
+  const html = getEditorHTML()
   const firstFile = form.files[0] || null
   const previewFile = firstFile && firstFile.type.startsWith('image/') ? await resizeImage(firstFile) : firstFile
   store.openPreview({
     username: auth.user?.username || 'Anonymous',
-    text: form.text,
+    text: html,
     file: previewFile ? URL.createObjectURL(previewFile) : null,
     fileType: previewFile ? previewFile.name.split('.').pop().toLowerCase() : null,
   })
@@ -145,13 +150,14 @@ async function handleSubmit() {
   submitting.value = true; submitError.value = ''
   try {
     const response = await store.createComment({
-      text: form.text,
+      text: getEditorHTML(),
       parent_id: props.parentId,
       files: form.files,
       captcha_key: captchaKey.value,
       captcha_value: captchaValue.value,
     })
-    form.text = ''; form.files = []
+    form.files = []
+    quillRef.value?.getQuill()?.setContents([])
     const fileInput = document.querySelector('input[type="file"]')
     if (fileInput) fileInput.value = ''
     emit('comment-created', response)
