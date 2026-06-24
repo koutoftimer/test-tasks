@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host dev.comments --port 5173",
-    "build": "vite build",
+    "build": "vite build"
   },
   "dependencies": {
     "@vueup/vue-quill": "^1.2.0",
