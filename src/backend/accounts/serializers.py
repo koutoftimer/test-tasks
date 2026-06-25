@@ -13,16 +13,15 @@ class ProfileSerializer(serializers.ModelSerializer):
 
 
 class ProfileUpdateSerializer(serializers.Serializer):
-    email = serializers.EmailField(required=True)
+    email = serializers.EmailField(source="user.email")
     homepage = serializers.URLField(required=False, allow_blank=True, allow_null=True)
     avatar = serializers.ImageField(required=False)
 
     def update(self, instance, validated_data):
-        user = instance.user
-        email = validated_data.get("email")
+        email = validated_data.get("user", {}).get("email")
         if email is not None:
-            user.email = email
-            user.save()
+            instance.user.email = email
+            instance.user.save()
 
         homepage = validated_data.get("homepage")
         if homepage is not None:
