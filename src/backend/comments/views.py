@@ -2,18 +2,16 @@ from captcha.helpers import captcha_image_url
 from captcha.models import CaptchaStore
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import BooleanField, Count, Exists, OuterRef, Q, Value
-from rest_framework import mixins, status, viewsets
+from rest_framework import status, viewsets
 from rest_framework.decorators import action, api_view
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .models import Comment, CommentVote, Profile, sanitize_text
+from .models import Comment, CommentVote, sanitize_text
 from .serializers import (
     CommentCreateSerializer,
     CommentDetailSerializer,
     CommentListSerializer,
-    ProfileDetailSerializer,
-    ProfileUpdateSerializer,
 )
 
 
@@ -140,20 +138,3 @@ def captcha(request):
         "key": new_key,
         "image_url": image_url,
     })
-
-
-class ProfileViewSet(
-    mixins.RetrieveModelMixin,
-    mixins.UpdateModelMixin,
-    viewsets.GenericViewSet,
-):
-    queryset = Profile.objects.all()
-    permission_classes = [IsAuthenticated]
-    serializer_class = ProfileDetailSerializer
-
-    def partial_update(self, request, *args, **kwargs):
-        profile = self.get_object()
-        serializer = ProfileUpdateSerializer(profile, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(ProfileDetailSerializer(profile).data)

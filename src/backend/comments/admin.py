@@ -1,12 +1,6 @@
 from django.contrib import admin
 
-from .models import Comment, CommentAttachment, Profile
-
-
-@admin.register(Profile)
-class ProfileAdmin(admin.ModelAdmin):
-    list_display = ("user", "homepage", "avatar")
-    search_fields = ("user__username", "user__email")
+from .models import Comment, CommentAttachment
 
 
 class CommentAttachmentInline(admin.TabularInline):

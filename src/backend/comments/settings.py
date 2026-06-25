@@ -22,6 +22,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "captcha",
     "comments",
+    "accounts",
 ]
 
 MIDDLEWARE = [
@@ -120,8 +121,8 @@ DJOSER = {
     "LOGIN_FIELD": "username",
     "USER_CREATE_PASSWORD_RETYPE": False,
     "SERIALIZERS": {
-        "user": "comments.serializers.UserSerializer",
-        "current_user": "comments.serializers.UserSerializer",
+        "user": "accounts.serializers.UserSerializer",
+        "current_user": "accounts.serializers.UserSerializer",
     },
 }
 

@@ -5,12 +5,9 @@ from datetime import datetime
 from typing import cast, Callable
 
 from django.conf import settings
-from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
 from django.core.files.uploadedfile import UploadedFile
 from django.db import models
-from django.db.models.signals import post_save
-from django.dispatch import receiver
 
 from html_sanitizer import Sanitizer
 from PIL import Image
@@ -30,26 +27,6 @@ def upload_file_path(prefix: str) -> Callable[[models.Model, str], str]:
 comment_file_path = cast(str, upload_file_path('uploads'))
 # Required for migrations: ./migrations/0004_alter_profile_avatar_and_more.py
 avatar_file_path = cast(str, upload_file_path('avatars'))
-
-
-class Profile(models.Model):
-    user = models.OneToOneField(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profile"
-    )
-    homepage = models.URLField(max_length=200, blank=True, null=True)
-    avatar = models.ImageField(upload_to=avatar_file_path, blank=True, null=True)
-
-    class Meta:
-        verbose_name = "Profile"
-        verbose_name_plural = "Profiles"
-
-    def save(self, *args, **kwargs):
-        if self.avatar:
-            self.avatar = resize_image(self.avatar, *settings.MAX_AVATAR_SIZE)
-        super().save(*args, **kwargs)
-
-    def __str__(self):
-        return f"Profile #{self.pk} for {self.user.username}"
 
 
 def resize_image(file_obj, width, height):
@@ -116,7 +93,7 @@ def sanitize_text(text):
 
 class Comment(models.Model):
     profile = models.ForeignKey(
-        Profile, on_delete=models.CASCADE, related_name="comments", null=True, blank=True
+        "comments.Profile", on_delete=models.CASCADE, related_name="comments", null=True, blank=True
     )
     text = models.TextField()
     parent = models.ForeignKey(
@@ -168,9 +145,3 @@ class CommentVote(models.Model):
         status = "like" if self.vote is True else "dislike" if self.vote is False else "removed"
         return f"{status} by {self.user.username} on Comment #{self.comment_id}"
 
-
-@receiver(post_save, sender=get_user_model())
-def create_profile_for_user(sender, instance, created, **kwargs):
-    """Create Profile for new users (during registration)."""
-    if created:
-        Profile.objects.get_or_create(user=instance)
