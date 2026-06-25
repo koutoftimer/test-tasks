@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+
 from django_lifecycle import LifecycleModel, hook, BEFORE_CREATE, BEFORE_UPDATE
 
 from comments.models import avatar_file_path, resize_image
@@ -23,6 +24,7 @@ class Profile(LifecycleModel):
     @hook(BEFORE_CREATE)
     @hook(BEFORE_UPDATE, when="avatar", has_changed=True)
     def resize_avatar(self):
+        """Makes sure that avatar get scaled to appropriate size"""
         if self.avatar:
             self.avatar = resize_image(self.avatar, *settings.MAX_AVATAR_SIZE)
 

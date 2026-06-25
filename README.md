@@ -39,5 +39,5 @@ $ xdg-open http://web.comments:8002  # or http://dev.comments:5173
 TODO
 ====
 
-- [x] Use rich text editor: https://vueup.github.io/vue-quill/
-- [ ] WS: likes, new posts
+- [ ] WS: likes, new posts.
+- [ ] Store original attachments and avatars in addition to their thumbnails.

@@ -12,16 +12,10 @@ class ProfileSerializer(serializers.ModelSerializer):
         fields = ["id", "username", "homepage", "avatar"]
 
 
-class ProfileDetailSerializer(ProfileSerializer):
-    email = serializers.EmailField(source="user.email", read_only=True)
-
-    class Meta(ProfileSerializer.Meta):
-        fields = ProfileSerializer.Meta.fields + ["email"]
-
-
 class ProfileUpdateSerializer(serializers.Serializer):
-    email = serializers.EmailField(required=False)
+    email = serializers.EmailField(required=True)
     homepage = serializers.URLField(required=False, allow_blank=True, allow_null=True)
+    avatar = serializers.ImageField(required=False)
 
     def update(self, instance, validated_data):
         user = instance.user
