@@ -7,7 +7,8 @@ from rest_framework.decorators import action, api_view
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .models import Comment, CommentVote, sanitize_text
+from likes.models import CommentVote
+from .models import Comment, sanitize_text
 from .serializers import (
     CommentCreateSerializer,
     CommentDetailSerializer,
