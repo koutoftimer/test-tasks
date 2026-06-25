@@ -1,6 +1,5 @@
 import os
 
-from django.conf import settings
 from django.utils import timezone
 from rest_framework import serializers
 
@@ -9,16 +8,10 @@ from accounts.serializers import ProfileSerializer
 
 
 class CommentAttachmentSerializer(serializers.ModelSerializer):
-    file = serializers.SerializerMethodField()
 
     class Meta:
         model = CommentAttachment
         fields = ["id", "file", "file_type"]
-
-    def get_file(self, obj):
-        if obj.file:
-            return f"{settings.API_BASE_URL}{obj.file.url}"
-        return None
 
 
 class CommentListSerializer(serializers.ModelSerializer):

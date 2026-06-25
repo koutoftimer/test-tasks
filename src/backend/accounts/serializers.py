@@ -1,4 +1,3 @@
-from django.conf import settings
 from djoser.serializers import UserSerializer as BaseUserSerializer
 from rest_framework import serializers
 
@@ -7,16 +6,10 @@ from .models import Profile
 
 class ProfileSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source="user.username", read_only=True)
-    avatar = serializers.SerializerMethodField()
 
     class Meta:
         model = Profile
         fields = ["id", "username", "homepage", "avatar"]
-
-    def get_avatar(self, obj):
-        if obj.avatar:
-            return f"{settings.API_BASE_URL}{obj.avatar.url}"
-        return None
 
 
 class ProfileDetailSerializer(ProfileSerializer):
@@ -29,7 +22,6 @@ class ProfileDetailSerializer(ProfileSerializer):
 class ProfileUpdateSerializer(serializers.Serializer):
     email = serializers.EmailField(required=False)
     homepage = serializers.URLField(required=False, allow_blank=True, allow_null=True)
-    avatar = serializers.ImageField(required=False, allow_null=True)
 
     def update(self, instance, validated_data):
         user = instance.user

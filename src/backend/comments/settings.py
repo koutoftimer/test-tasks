@@ -162,11 +162,11 @@ ALLOWED_HTML_TAGS = {
     "strong": [],
 }
 
-API_BASE_URL = os.environ.get("API_BASE_URL", "http://api.comments:8002")
-
 # Add this to ensure CSRF works with the cross-domain setup
 CSRF_TRUSTED_ORIGINS = (
     os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",")
     if os.environ.get("CSRF_TRUSTED_ORIGINS")
     else default_cors
 )
+
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
