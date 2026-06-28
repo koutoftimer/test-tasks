@@ -19,6 +19,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.dev
+    image: comments-api
     expose:
       - "8002"
     env_file:
@@ -31,6 +32,16 @@ services:
     command: >
       sh -c "python manage.py migrate &&
              python manage.py runserver 0.0.0.0:8002"
+
+  test:
+    image: comments-api
+    profiles:
+      - test
+    environment:
+      - DJANGO_SETTINGS_MODULE=comments.settings_test
+    volumes:
+      - ./src/backend:/app
+    command: python manage.py test --parallel
 
   nginx:
     image: nginx:1.31
