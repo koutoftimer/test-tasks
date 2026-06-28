@@ -1,14 +1,18 @@
+from urllib.parse import urljoin
+
+from django.conf import settings
 from django.db import migrations
 
 
 def migrate_attachments_to_comment_text(apps, schema_editor):
     CommentAttachment = apps.get_model("comments", "CommentAttachment")
     Comment = apps.get_model("comments", "Comment")
+    base = settings.API_BASE_URL
 
     comment_ids = (
-        CommentAttachment.objects
-        .filter(comment__isnull=False)
+        CommentAttachment.objects.filter(comment__isnull=False)
         .values_list("comment_id", flat=True)
+        .order_by()
         .distinct()
     )
 
@@ -18,10 +22,11 @@ def migrate_attachments_to_comment_text(apps, schema_editor):
         for att in attachments:
             if not att.file:
                 continue
+            url = urljoin(base + "/", att.file.url)
             if att.file_type == "image":
-                tags.append(f'<img src="{att.file.url}">')
+                tags.append(f'<img src="{url}">')
             elif att.file_type == "text":
-                tags.append(f'<a href="{att.file.url}">Download</a>')
+                tags.append(f'<a href="{url}">Download</a>')
 
         if not tags:
             continue

@@ -83,6 +83,9 @@ STATIC_ROOT = BASE_DIR / "static"
 
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
+API_BASE_URL = os.environ.get(
+    "API_BASE_URL", "http://api.comments:8002"
+).rstrip("/")
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
