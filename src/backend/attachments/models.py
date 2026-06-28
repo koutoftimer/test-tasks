@@ -1,6 +1,7 @@
 from django.conf import settings
-from django.core.files.uploadedfile import UploadedFile
 from django.db import models
+
+from django_lifecycle import LifecycleModelMixin, hook, BEFORE_CREATE
 
 from comments.models import resize_image, attachment_file_path
 
@@ -10,7 +11,7 @@ class FileType(models.TextChoices):
     TEXT = "text", "Text file"
 
 
-class CommentAttachment(models.Model):
+class CommentAttachment(LifecycleModelMixin, models.Model):
     comment = models.ForeignKey(
         "Comment", on_delete=models.CASCADE, related_name="attachments"
     )
@@ -30,9 +31,7 @@ class CommentAttachment(models.Model):
     def __str__(self):
         return f"Attachment #{self.pk} for Comment #{self.comment_id}"
 
-    def save(self, *args, **kwargs):
-        is_image = self.file and self.file_type == FileType.IMAGE
-        fresh_upload = is_image and isinstance(self.file.file, UploadedFile)
-        if fresh_upload:
+    @hook(BEFORE_CREATE)
+    def resize_image_if_needed(self):
+        if self.file and self.file_type == FileType.IMAGE:
             self.file = resize_image(self.file, *settings.MAX_IMAGE_SIZE)
-        super().save(*args, **kwargs)
