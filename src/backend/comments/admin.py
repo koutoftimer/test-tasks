@@ -1,11 +1,8 @@
 from django.contrib import admin
 
-from .models import Comment, CommentAttachment
+from .models import Comment
 
-
-class CommentAttachmentInline(admin.TabularInline):
-    model = CommentAttachment
-    extra = 0
+from attachments.admin import CommentAttachmentInline
 
 
 @admin.register(Comment)

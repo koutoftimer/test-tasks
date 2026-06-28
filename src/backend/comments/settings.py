@@ -22,6 +22,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "captcha",
     "comments",
+    "attachments",
     "accounts",
     "likes",
 ]

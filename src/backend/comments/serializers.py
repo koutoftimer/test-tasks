@@ -3,15 +3,9 @@ import os
 from django.utils import timezone
 from rest_framework import serializers
 
-from .models import Comment, CommentAttachment
+from .models import Comment
 from accounts.serializers import ProfileSerializer
-
-
-class CommentAttachmentSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = CommentAttachment
-        fields = ["id", "file", "file_type"]
+from attachments.serializers import CommentAttachmentSerializer
 
 
 class CommentListSerializer(serializers.ModelSerializer):
@@ -117,9 +111,7 @@ def _validate_single_file(file):
             "Only JPG, GIF, PNG, and TXT files are allowed."
         )
     if ext == "txt" and file.size > 100 * 1024:
-        raise serializers.ValidationError(
-            "Text file exceeds maximum size of 100KB."
-        )
+        raise serializers.ValidationError("Text file exceeds maximum size of 100KB.")
     return file
 
 
@@ -175,6 +167,7 @@ class CommentCreateSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         from accounts.models import Profile
+        from attachments.models import CommentAttachment
 
         text = validated_data["text"]
         parent_id = validated_data.get("parent_id")
@@ -206,6 +199,3 @@ class CommentCreateSerializer(serializers.Serializer):
 
     def to_representation(self, instance):
         return CommentDetailSerializer(instance, context=self.context).data
-
-
-

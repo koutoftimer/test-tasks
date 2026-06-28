@@ -6,7 +6,6 @@ from typing import cast, Callable
 
 from django.conf import settings
 from django.core.files.base import ContentFile
-from django.core.files.uploadedfile import UploadedFile
 from django.db import models
 
 from html_sanitizer import Sanitizer
@@ -27,6 +26,8 @@ def upload_file_path(prefix: str) -> Callable[[models.Model, str], str]:
 comment_file_path = cast(str, upload_file_path('uploads'))
 # Required for migrations: ./migrations/0004_alter_profile_avatar_and_more.py
 avatar_file_path = cast(str, upload_file_path('avatars'))
+# Required for migrations: ./migrations/0005_add_comment_attachment.py
+attachment_file_path = cast(str, upload_file_path('uploads'))
 
 
 def resize_image(file_obj, width, height):
@@ -37,46 +38,6 @@ def resize_image(file_obj, width, height):
         output = io.BytesIO()
         img.save(output, format=img.format)
         return ContentFile(output.getvalue(), name=file_obj.name)
-
-
-class FileType(models.TextChoices):
-    IMAGE = "image", "Image"
-    TEXT = "text", "Text file"
-
-
-def attachment_file_path(instance, filename):
-    _, ext = os.path.splitext(filename)
-    name = f"{uuid.uuid4().hex}{ext.lower()}"
-    return os.path.join("uploads", datetime.now().strftime("%Y/%m/%d"), name)
-
-
-class CommentAttachment(models.Model):
-    comment = models.ForeignKey(
-        "Comment", on_delete=models.CASCADE, related_name="attachments"
-    )
-    # TODO: add separate field for thumbnails to allow high resolution image attachments
-    file = models.FileField(
-        upload_to=attachment_file_path, null=True, blank=True, max_length=500
-    )
-    file_type = models.CharField(
-        max_length=10, choices=FileType.choices, null=True, blank=True
-    )
-    id = models.BigAutoField(primary_key=True)
-
-    class Meta:
-        verbose_name = "Comment Attachment"
-        verbose_name_plural = "Comment Attachments"
-        ordering = ["id"]
-
-    def __str__(self):
-        return f"Attachment #{self.pk} for Comment #{self.comment_id}"
-
-    def save(self, *args, **kwargs):
-        is_image = self.file and self.file_type == FileType.IMAGE
-        fresh_upload = is_image and isinstance(self.file.file, UploadedFile)
-        if fresh_upload:
-            self.file = resize_image(self.file, *settings.MAX_IMAGE_SIZE)
-        super().save(*args, **kwargs)
 
 
 def sanitize_text(text):
