@@ -8,33 +8,43 @@
       <div class="preview-body">
         <div class="preview-author">{{ data.username }}</div>
         <div class="preview-text" v-html="sanitizeHtml(data.text)"></div>
-        <div v-if="data.file" class="preview-file">
-          <img v-if="isImage" :src="data.file" alt="Preview" class="preview-image" />
-          <a v-else :href="data.file" target="_blank">Download file</a>
-        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
-
 const props = defineProps({ data: Object })
 defineEmits(['close'])
-
-const isImage = computed(() => {
-  return props.data.fileType && ['jpg', 'jpeg', 'png', 'gif'].includes(props.data.fileType)
-})
 
 function sanitizeHtml(text) {
   if (!text) return ''
   const tagPattern = /<\/?(\w+)([^>]*)>/g
-  const allowedTags = { a: ['href', 'title'], br: [], code: [], i: [], p: [], strong: [] }
+  const allowedTags = {
+    a: ['href', 'title'],
+    b: [],
+    br: [],
+    code: [],
+    i: [],
+    img: ['src', 'alt', 'width', 'height'],
+    p: [],
+    strong: [],
+  }
   return text.replace(tagPattern, (match, tagName, attrsStr) => {
     const tag = tagName.toLowerCase()
     if (!(tag in allowedTags)) return ''
-    if (match.startsWith('</')) return match
+    if (match.startsWith('</') && tag !== 'img') return match
+    if (tag === 'img' || tag === 'br') {
+      if (match.startsWith('</')) return ''
+      const allowedAttrs = allowedTags[tag]
+      const attrPattern = /(\w+)=(["']).*?\2/g
+      const cleanAttrs = []
+      let m
+      while ((m = attrPattern.exec(attrsStr)) !== null) {
+        if (allowedAttrs.includes(m[1].toLowerCase())) cleanAttrs.push(m[0])
+      }
+      return `<${tag}${cleanAttrs.length ? ' ' + cleanAttrs.join(' ') : ''}>`
+    }
     const allowedAttrs = allowedTags[tag]
     const attrPattern = /(\w+)=(["']).*?\2/g
     const cleanAttrs = []
@@ -68,6 +78,5 @@ function sanitizeHtml(text) {
 .preview-text :deep(code) { background: #f0f0f0; padding: 2px 6px; border-radius: 3px; }
 .preview-text :deep(i) { font-style: italic; }
 .preview-text :deep(strong) { font-weight: 700; }
-.preview-file { margin-top: 12px; }
-.preview-image { max-width: 100%; border-radius: 4px; }
+.preview-text :deep(img) { max-width: 100%; border-radius: 4px; }
 </style>

@@ -139,19 +139,25 @@ export const useCommentStore = defineStore('comment', {
     },
 
     async createComment(data) {
-      const formData = new FormData()
-      formData.append('text', data.text)
-      formData.append('captcha_key', data.captcha_key)
-      formData.append('captcha_value', data.captcha_value)
-      if (data.parent_id) formData.append('parent_id', String(data.parent_id))
-      if (data.files) {
-        for (const f of data.files) {
-          formData.append('files', f)
-        }
-      }
-
       try {
-        const response = await api.post('/comments/', formData, {
+        const response = await api.post('/comments/', data)
+        return response.data
+      } catch (err) {
+        if (err.response?.data) {
+          const detail = typeof err.response.data === 'string'
+            ? err.response.data
+            : Object.values(err.response.data).flat().join(', ')
+          throw new Error(detail || 'Failed to create comment')
+        }
+        throw new Error('Network error')
+      }
+    },
+
+    async uploadAttachment(file) {
+      const formData = new FormData()
+      formData.append('file', file)
+      try {
+        const response = await api.post('/upload/', formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         })
         return response.data
@@ -160,7 +166,7 @@ export const useCommentStore = defineStore('comment', {
           const detail = typeof err.response.data === 'string'
             ? err.response.data
             : Object.values(err.response.data).flat().join(', ')
-          throw new Error(detail || 'Failed to create comment')
+          throw new Error(detail || 'Failed to upload file')
         }
         throw new Error('Network error')
       }

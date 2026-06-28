@@ -13,6 +13,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/", include(router.urls)),
     path("api/", include("accounts.urls")),
+    path("api/", include("attachments.urls")),
     path("api/sanitize/", views.sanitize, name="sanitize"),
     path("api/captcha/", views.captcha, name="captcha"),
     path("captcha/", include("captcha.urls")),

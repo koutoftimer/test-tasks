@@ -57,7 +57,7 @@ class CommentViewSet(viewsets.ModelViewSet):
         )
 
     def get_queryset(self):
-        qs = Comment.objects.filter(parent=None).select_related("profile__user").prefetch_related("attachments")
+        qs = Comment.objects.filter(parent=None).select_related("profile__user")
         qs = self._annotate_votes(qs)
         sort_by = self.request.query_params.get("sort", "-id")
         allowed_sorts = {
@@ -76,24 +76,32 @@ class CommentViewSet(viewsets.ModelViewSet):
         try:
             comment = Comment.objects.get(pk=pk)
         except ObjectDoesNotExist:
-            return Response({"error": "Comment not found."}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"error": "Comment not found."}, status=status.HTTP_404_NOT_FOUND
+            )
         replies = comment.replies.all().order_by("id")
         replies = self._annotate_votes(replies)
-        serializer = CommentDetailSerializer(replies, many=True, context=self.get_serializer_context())
+        serializer = CommentDetailSerializer(
+            replies, many=True, context=self.get_serializer_context()
+        )
         return Response(serializer.data)
 
-    @action(detail=True, methods=["post", "delete"], permission_classes=[IsAuthenticated])
+    @action(
+        detail=True, methods=["post", "delete"], permission_classes=[IsAuthenticated]
+    )
     def vote(self, request, pk=None):
         try:
             comment = Comment.objects.get(pk=pk)
         except ObjectDoesNotExist:
-            return Response({"error": "Comment not found."}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"error": "Comment not found."}, status=status.HTTP_404_NOT_FOUND
+            )
         user = request.user
 
         if request.method == "DELETE":
-            updated = CommentVote.objects.filter(
-                comment=comment, user=user
-            ).update(vote=None)
+            updated = CommentVote.objects.filter(comment=comment, user=user).update(
+                vote=None
+            )
             if not updated:
                 return Response(
                     {"error": "Vote not found."},
@@ -122,7 +130,11 @@ class CommentViewSet(viewsets.ModelViewSet):
         like_count = comment.votes.filter(vote=True).count()
         dislike_count = comment.votes.filter(vote=False).count()
         return Response(
-            {"vote": vote_type, "like_count": like_count, "dislike_count": dislike_count}
+            {
+                "vote": vote_type,
+                "like_count": like_count,
+                "dislike_count": dislike_count,
+            }
         )
 
 
@@ -133,9 +145,12 @@ def sanitize(request):
 
 @api_view(["GET"])
 def captcha(request):
+    # TODO: clean up stale captchas in periodic Celery task
     new_key = CaptchaStore.generate_key()
     image_url = captcha_image_url(new_key)
-    return Response({
-        "key": new_key,
-        "image_url": image_url,
-    })
+    return Response(
+        {
+            "key": new_key,
+            "image_url": image_url,
+        }
+    )

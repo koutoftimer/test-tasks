@@ -7,7 +7,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "django-insecure-dev-key")
 DEBUG = os.environ.get("DJANGO_DEBUG", "True") == "True"
-ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "api.comments,localhost,127.0.0.1").split(",")
+ALLOWED_HOSTS = os.environ.get(
+    "DJANGO_ALLOWED_HOSTS", "api.comments,localhost,127.0.0.1"
+).split(",")
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -101,21 +103,36 @@ REST_FRAMEWORK = {
     ),
 }
 
+
 # JWT
 def _parse_duration(value):
-    match = re.match(r"^(\d+)\s*(minute|min|m|hour|h|day|d)s?$", value.strip(), re.IGNORECASE)
+    match = re.match(
+        r"^(\d+)\s*(minute|min|m|hour|h|day|d)s?$", value.strip(), re.IGNORECASE
+    )
     if not match:
         raise ValueError(f"Invalid duration: {value}")
     num = int(match.group(1))
     unit = match.group(2).lower()
-    units = {"minute": "minutes", "min": "minutes", "m": "minutes",
-             "hour": "hours", "h": "hours", "day": "days", "d": "days"}
+    units = {
+        "minute": "minutes",
+        "min": "minutes",
+        "m": "minutes",
+        "hour": "hours",
+        "h": "hours",
+        "day": "days",
+        "d": "days",
+    }
     return timedelta(**{units[unit]: num})
+
 
 SIMPLE_JWT = {
     "AUTH_HEADER_TYPES": ("Bearer",),
-    "ACCESS_TOKEN_LIFETIME": _parse_duration(os.environ.get("JWT_ACCESS_TOKEN_LIFETIME", "5 minutes")),
-    "REFRESH_TOKEN_LIFETIME": _parse_duration(os.environ.get("JWT_REFRESH_TOKEN_LIFETIME", "1 day")),
+    "ACCESS_TOKEN_LIFETIME": _parse_duration(
+        os.environ.get("JWT_ACCESS_TOKEN_LIFETIME", "5 minutes")
+    ),
+    "REFRESH_TOKEN_LIFETIME": _parse_duration(
+        os.environ.get("JWT_REFRESH_TOKEN_LIFETIME", "1 day")
+    ),
 }
 
 # Djoser
@@ -160,6 +177,7 @@ ALLOWED_HTML_TAGS = {
     "br": [],
     "code": [],
     "i": [],
+    "img": ["src", "alt", "width", "height"],
     "p": [],
     "strong": [],
 }

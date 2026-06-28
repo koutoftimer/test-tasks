@@ -10,13 +10,7 @@
         </a>
         <span class="comment-date">{{ formatDate(comment.created_at) }}</span>
       </div>
-      <div class="comment-text" v-html="sanitizeHtml(comment.text)"></div>
-      <div v-if="comment.attachments?.length" class="comment-files">
-        <div v-for="att in comment.attachments" :key="att.id" class="comment-file">
-          <img v-if="att.file_type === 'image'" :src="mediaUrl(att.file)" alt="Attachment" class="comment-image" @click="store.openLightbox(mediaUrl(att.file))" />
-          <a v-else :href="mediaUrl(att.file)" target="_blank" class="file-link" download>Download file</a>
-        </div>
-      </div>
+      <div class="comment-text" v-html="sanitizeHtml(comment.text)" @click="handleTextClick"></div>
       <div class="comment-actions">
         <span v-if="voteError" class="vote-error">{{ voteError }}</span>
         <button class="btn-vote" :class="{ active: comment.is_liked }" @click="handleVote('like')">
@@ -93,6 +87,12 @@ function handleReplyCreated(reply) {
   store.addReply(props.comment.id, reply)
 }
 
+function handleTextClick(e) {
+  if (e.target.tagName === 'IMG') {
+    store.openLightbox(e.target.src)
+  }
+}
+
 async function handleVote(voteType) {
   if (!auth.isAuthenticated) {
     voteError.value = 'Please log in to vote'
@@ -125,9 +125,11 @@ function sanitizeHtml(text) {
   if (!text) return ''
   const allowedTags = {
     a: ['href', 'title'],
+    b: [],
     br: [],
     code: [],
     i: [],
+    img: ['src', 'alt', 'width', 'height'],
     p: [],
     strong: [],
   }
@@ -135,7 +137,21 @@ function sanitizeHtml(text) {
   return text.replace(tagPattern, (match, tagName, attrsStr) => {
     const tag = tagName.toLowerCase()
     if (!(tag in allowedTags)) return ''
-    if (match.startsWith('</')) return match
+    if (match.startsWith('</') && tag !== 'img') return match
+    if (tag === 'img' || tag === 'br') {
+      if (match.startsWith('</')) return ''
+      const allowedAttrs = allowedTags[tag]
+      const attrPattern = /(\w+)=(["']).*?\2/g
+      const cleanAttrs = []
+      let attrMatch
+      while ((attrMatch = attrPattern.exec(attrsStr)) !== null) {
+        if (allowedAttrs.includes(attrMatch[1].toLowerCase())) {
+          cleanAttrs.push(attrMatch[0])
+        }
+      }
+      const attrs = cleanAttrs.length ? ' ' + cleanAttrs.join(' ') : ''
+      return `<${tag}${attrs}>`
+    }
     const allowedAttrs = allowedTags[tag]
     const attrPattern = /(\w+)=(["']).*?\2/g
     const cleanAttrs = []
@@ -174,10 +190,7 @@ function sanitizeHtml(text) {
 .comment-text :deep(p) { margin: 0 0 4px; }
 .comment-text :deep(p:last-child) { margin: 0; }
 .comment-text :deep(strong) { font-weight: 700; }
-.comment-files { display: flex; flex-wrap: wrap; gap: 8px; }
-.comment-file { }
-.comment-image { max-width: 320px; max-height: 240px; border-radius: 4px; cursor: pointer; border: 1px solid #e0e0e0; }
-.file-link { color: #1a73e8; font-size: 13px; }
+.comment-text :deep(img) { max-width: 320px; max-height: 240px; border-radius: 4px; cursor: pointer; border: 1px solid #e0e0e0; }
 .comment-actions { display: flex; align-items: center; gap: 12px; padding-top: 6px; border-top: 1px solid #f0f0f0; }
 .btn-vote { background: none; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 3px; padding: 2px 6px; border-radius: 3px; font-size: 12px; color: #888; transition: color 0.15s; }
 .btn-vote:hover { color: #1a73e8; background: #e8f0fe; }

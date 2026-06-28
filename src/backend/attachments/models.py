@@ -1,5 +1,8 @@
+import datetime
+
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 from django_lifecycle import LifecycleModelMixin, hook, BEFORE_CREATE
 
@@ -13,7 +16,11 @@ class FileType(models.TextChoices):
 
 class CommentAttachment(LifecycleModelMixin, models.Model):
     comment = models.ForeignKey(
-        "Comment", on_delete=models.CASCADE, related_name="attachments"
+        "Comment",
+        on_delete=models.CASCADE,
+        related_name="attachments",
+        null=True,
+        blank=True,
     )
     file = models.FileField(
         upload_to=attachment_file_path, null=True, blank=True, max_length=500
@@ -21,6 +28,7 @@ class CommentAttachment(LifecycleModelMixin, models.Model):
     file_type = models.CharField(
         max_length=10, choices=FileType.choices, null=True, blank=True
     )
+    uploaded_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         app_label = "comments"
@@ -29,9 +37,17 @@ class CommentAttachment(LifecycleModelMixin, models.Model):
         ordering = ["id"]
 
     def __str__(self):
-        return f"Attachment #{self.pk} for Comment #{self.comment_id}"
+        cid = self.comment_id or "?"
+        return f"Attachment #{self.pk} for Comment #{cid}"
+
+    @staticmethod
+    def delete_orphans():
+        cutoff = timezone.now() - datetime.timedelta(hours=3)
+        CommentAttachment.objects.filter(
+            comment__isnull=True, uploaded_at__lt=cutoff
+        ).delete()
 
     @hook(BEFORE_CREATE)
-    def resize_image_if_needed(self):
-        if self.file and self.file_type == FileType.IMAGE:
+    def resize_image_attachment(self):
+        if self.file_type == FileType.IMAGE:
             self.file = resize_image(self.file, *settings.MAX_IMAGE_SIZE)
