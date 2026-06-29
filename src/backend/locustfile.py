@@ -38,6 +38,12 @@ class CommentUser(HttpUser):
         page = random.randint(1, self.num_pages)
         self.client.get(f"/api/comments/?page={page}")
 
+    @task(5)
+    def view_comment_details(self):
+        comment_id = random.randint(1, 1000000)
+        self.client.get(f"/api/comments/{comment_id}/")
+        self.client.get(f"/api/comments/{comment_id}/replies")
+
     @task(1)
     def post_comment(self):
         captcha = self.client.get("/api/captcha/").json()
@@ -54,7 +60,6 @@ class CommentUser(HttpUser):
 
     @task(2)
     def vote_on_comment(self):
-        # Pick a random comment ID (e.g., between 1 and 1,000,000)
         comment_id = random.randint(1, 1000000)
         self.client.post(
             f"/api/comments/{comment_id}/vote/",
