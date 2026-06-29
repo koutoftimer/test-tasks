@@ -30,19 +30,25 @@
 
 <script setup>
 import { onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useCommentStore } from '../stores/comment.js'
 import CommentForm from '../components/CommentForm.vue'
 import CommentList from '../components/CommentList.vue'
 import SortControls from '../components/SortControls.vue'
 import Pagination from '../components/Pagination.vue'
 
+const DEFAULT_SORT = '-created_at'
+
 const props = defineProps({ pageNum: { type: Number, default: 1 } })
 const store = useCommentStore()
+const route = useRoute()
 const router = useRouter()
 
 onMounted(() => {
   store.page = Number(props.pageNum)
+  if (route.query.sort && route.query.sort !== store.sortBy) {
+    store.sortBy = route.query.sort
+  }
   store.fetchComments()
 })
 
@@ -52,13 +58,23 @@ function handleSort(field) {
   } else {
     store.sortBy = field
   }
-  store.page = 1
-  store.fetchComments()
-  router.replace({ name: 'list' })
+
+  const page = Number(props.pageNum)
+  const query = store.sortBy !== DEFAULT_SORT ? { sort: store.sortBy } : {}
+
+  if (page > 1) {
+    router.replace({ name: 'list-page', params: { pageNum: page }, query })
+  } else {
+    router.replace({ name: 'list', query })
+  }
 }
 
 function handleGoToPage(p) {
-  router.push({ name: 'list-page', params: { pageNum: Number(p) } })
+  const query = {}
+  if (route.query.sort && route.query.sort !== DEFAULT_SORT) {
+    query.sort = route.query.sort
+  }
+  router.push({ name: 'list-page', params: { pageNum: Number(p) }, query })
 }
 
 function goToDetail(comment) {
