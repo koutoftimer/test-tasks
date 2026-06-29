@@ -14,6 +14,7 @@ RUN pip install --no-cache-dir -r /requirements/prod-frozen.txt
 WORKDIR /app
 COPY src/backend/ /app/
 
+ENV DJANGO_DEBUG=False
 RUN python manage.py collectstatic --noinput
 
 COPY entrypoint.sh /entrypoint.sh
