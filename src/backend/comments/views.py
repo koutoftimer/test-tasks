@@ -1,5 +1,6 @@
 from django.db.models import BooleanField, Count, Exists, OuterRef, Q, Value
 from django.http import Http404
+from django.shortcuts import get_object_or_404
 
 from captcha.helpers import captcha_image_url
 from captcha.models import CaptchaStore
@@ -74,7 +75,7 @@ class CommentViewSet(
 
     @action(detail=True, methods=["get"])
     def replies(self, request, pk=None):
-        comment = self.get_object()
+        comment = get_object_or_404(Comment, pk=pk)
 
         replies = comment.replies.all().select_related("profile__user").order_by("id")
         replies = self._annotate_votes(replies)
@@ -88,7 +89,7 @@ class CommentViewSet(
         permission_classes=[IsAuthenticated],
     )
     def vote(self, request, pk=None):
-        comment = self.get_object()
+        comment = get_object_or_404(Comment, pk=pk)
 
         if request.method == "DELETE":
             if not CommentVote.objects.filter(

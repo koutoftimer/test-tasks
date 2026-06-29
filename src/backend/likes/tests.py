@@ -142,6 +142,25 @@ class TestVote(TestCase):
         response = self.client.post(url, {"vote": "like"}, headers=self._header(tokens))
         self.assertEqual(response.status_code, 404)
 
+    def test_vote_reply_comment(self):
+        """Posts and deletes vote on a reply comment (was 404 due to get_queryset filter)."""
+        reply = Comment.objects.create(text="Reply comment", parent=self.comment)
+        tokens = self._auth()
+        headers = self._header(tokens)
+        url = self._vote_url(comment_id=reply.id)
+
+        response = self.client.post(url, {"vote": "like"}, headers=headers)
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["vote"], "like")
+        self.assertEqual(data["like_count"], 1)
+        self.assertEqual(data["dislike_count"], 0)
+
+        response = self.client.delete(url, headers=headers)
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIsNone(data["vote"])
+
     def test_counts_in_comment_list(self):
         """Like and dislike counts can reach >1 in GET /api/comments/ response."""
         headers = self._header(self._auth())
