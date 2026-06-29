@@ -75,6 +75,8 @@ DATABASES = {
         "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "comments"),
         "HOST": os.environ.get("POSTGRES_HOST", "db"),
         "PORT": os.environ.get("POSTGRES_PORT", "5432"),
+        # see: https://docs.djangoproject.com/en/6.0/ref/databases/#transaction-pooling-and-server-side-cursors
+        "DISABLE_SERVER_SIDE_CURSORS": True,
     }
 }
 
@@ -90,9 +92,9 @@ STATIC_ROOT = BASE_DIR / "static"
 
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
-API_BASE_URL = os.environ.get(
-    "API_BASE_URL", "http://api.comments:8002"
-).rstrip("/")
+API_BASE_URL = os.environ.get("API_BASE_URL", "http://api.comments:8002").rstrip("/")
+
+MASTER_CAPTCHA_VALUE = os.environ.get("MASTER_CAPTCHA_VALUE", "")
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

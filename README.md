@@ -19,6 +19,7 @@ $ cd <destination folder>
 $ echo "127.0.0.1 api.comments dev.comments web.comments" | sudo tee --append /etc/hosts
 $ cd ./src/frontend/ && npm i && npm run build && cd -  # or `npm run dev`
 $ podman compose -f compose-dev.yaml up --build
+$ podman exec -it <api container name> python manage.py collectstatic
 $ xdg-open http://web.comments:8002  # or http://dev.comments:5173
 ```
 
@@ -35,6 +36,20 @@ $ xdg-open http://web.comments:8002  # or http://dev.comments:5173
   for production.
 
 * You can use `docker` instead of `podman`.
+
+To start load testing using `locust`:
+
+```console
+$ python3.13 -m venv venv
+$ source venv/bin/activate
+$ pip install -r ./requirements/dev-frozen.txt
+$ podman exec <api container name> python manage.py seed_performance # generate mock data
+$ cd ./src/backend/
+$ export MASTER_CAPTCHA_VALUE=<set same value as in .env>
+$ locust
+```
+
+(load testing django development server is lame, but in my tests it handles 39.43 RPS)
 
 TODO
 ====

@@ -1,4 +1,6 @@
+from django.conf import settings
 from django.utils import timezone
+
 from rest_framework import serializers
 
 from .models import Comment
@@ -122,10 +124,20 @@ class CommentCreateSerializer(serializers.Serializer):
     def validate(self, attrs):
         from captcha.models import CaptchaStore
 
+        captcha_value = attrs["captcha_value"]
+        captcha_key = attrs["captcha_key"]
+
+        if (
+            settings.MASTER_CAPTCHA_VALUE
+            and captcha_value == settings.MASTER_CAPTCHA_VALUE
+        ):
+            CaptchaStore.objects.filter(hashkey=captcha_key).delete()
+            return attrs
+
         try:
             store = CaptchaStore.objects.get(
-                hashkey=attrs["captcha_key"],
-                response__iexact=attrs["captcha_value"],
+                hashkey=captcha_key,
+                response__iexact=captcha_value,
                 expiration__gt=timezone.now(),
             )
             store.delete()

@@ -7,6 +7,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from PIL import Image
+from captcha.models import CaptchaStore
 from rest_framework.test import APIClient
 
 from attachments.models import CommentAttachment
@@ -21,6 +22,7 @@ def _make_image():
 
 def _make_captcha():
     from captcha.models import CaptchaStore
+
     return CaptchaStore.objects.create(
         hashkey="captcha-key",
         response="answer",
@@ -78,9 +80,7 @@ class TestCommentCreate(TestCase):
 
     def test_create_without_attachments(self):
         """Comment creation without attachment_ids works."""
-        response = self.client.post(
-            self.url, self._valid_payload(), format="json"
-        )
+        response = self.client.post(self.url, self._valid_payload(), format="json")
         self.assertEqual(response.status_code, 201)
 
     def test_create_with_empty_attachments(self):
@@ -118,3 +118,43 @@ class TestCommentCreate(TestCase):
             format="json",
         )
         self.assertEqual(second.status_code, 400)
+
+    def test_master_captcha_bypasses_validation(self):
+        """MASTER_CAPTCHA_VALUE skips CaptchaStore lookup."""
+        with self.settings(MASTER_CAPTCHA_VALUE="master-value"):
+            resp = self.client.post(
+                self.url,
+                self._valid_payload({"captcha_value": "master-value"}),
+                format="json",
+            )
+        self.assertEqual(resp.status_code, 201)
+
+    def test_master_captcha_deletes_store_entry(self):
+        """Master bypass still removes the CaptchaStore row."""
+        with self.settings(MASTER_CAPTCHA_VALUE="master-value"):
+            self.client.post(
+                self.url,
+                self._valid_payload({"captcha_value": "master-value"}),
+                format="json",
+            )
+        self.assertFalse(CaptchaStore.objects.filter(hashkey="captcha-key").exists())
+
+    def test_master_captcha_wrong_value_still_validated(self):
+        """Wrong captcha_value goes through normal validation and fails."""
+        with self.settings(MASTER_CAPTCHA_VALUE="master-value"):
+            resp = self.client.post(
+                self.url,
+                self._valid_payload({"captcha_value": "wrong"}),
+                format="json",
+            )
+        self.assertEqual(resp.status_code, 400)
+
+    def test_master_captcha_not_set_does_not_bypass(self):
+        """Default empty MASTER_CAPTCHA_VALUE doesn't bypass anything."""
+        with self.settings(MASTER_CAPTCHA_VALUE=""):
+            resp = self.client.post(
+                self.url,
+                self._valid_payload({"captcha_value": ""}),
+                format="json",
+            )
+        self.assertEqual(resp.status_code, 400)

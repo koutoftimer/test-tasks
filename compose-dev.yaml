@@ -14,6 +14,20 @@ services:
       timeout: 5s
       retries: 5
 
+  pgbouncer:
+    image: edoburu/pgbouncer:v1.25.2-p0
+    env_file:
+      - .env
+    ports:
+      - "6432:6432"
+    depends_on:
+      - db
+    healthcheck:
+      test: ['CMD', 'pg_isready', '-h', 'localhost']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   api:
     build:
       context: .
@@ -26,11 +40,12 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      pgbouncer:
+        condition: service_healthy
     volumes:
       - ./src/backend:/app
     command: >
       sh -c "python manage.py migrate &&
-             python manage.py collectstatic &&
              python manage.py runserver 0.0.0.0:8002"
 
   test:
