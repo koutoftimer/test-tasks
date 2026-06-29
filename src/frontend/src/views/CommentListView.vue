@@ -11,7 +11,7 @@
     />
     <SortControls
       :sort-by="store.sortBy"
-      @sort="store.setSort"
+      @sort="handleSort"
     />
     <CommentList
       :comments="store.comments"
@@ -21,14 +21,15 @@
       @select="goToDetail"
     />
     <Pagination
-      :page="store.page"
+      :page="Number(pageNum)"
       :total-pages="store.totalPages"
-      @go-to-page="store.goToPage"
+      @go-to-page="handleGoToPage"
     />
   </div>
 </template>
 
 <script setup>
+import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCommentStore } from '../stores/comment.js'
 import CommentForm from '../components/CommentForm.vue'
@@ -36,8 +37,29 @@ import CommentList from '../components/CommentList.vue'
 import SortControls from '../components/SortControls.vue'
 import Pagination from '../components/Pagination.vue'
 
+const props = defineProps({ pageNum: { type: Number, default: 1 } })
 const store = useCommentStore()
 const router = useRouter()
+
+onMounted(() => {
+  store.page = Number(props.pageNum)
+  store.fetchComments()
+})
+
+function handleSort(field) {
+  if (store.sortBy === field) {
+    store.sortBy = `-${field}`
+  } else {
+    store.sortBy = field
+  }
+  store.page = 1
+  store.fetchComments()
+  router.replace({ name: 'list' })
+}
+
+function handleGoToPage(p) {
+  router.push({ name: 'list-page', params: { pageNum: Number(p) } })
+}
 
 function goToDetail(comment) {
   router.push({ name: 'detail', params: { id: comment.id } })

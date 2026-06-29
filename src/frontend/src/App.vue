@@ -81,7 +81,6 @@ const profileError = ref('')
 const profileSuccess = ref('')
 
 onMounted(() => {
-  store.fetchComments()
   if (auth.accessToken) {
     auth.fetchUser()
   }

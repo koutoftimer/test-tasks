@@ -4,7 +4,8 @@ import CommentDetailView from '../views/CommentDetailView.vue'
 import NotFoundView from '../views/NotFoundView.vue'
 
 const routes = [
-  { path: '/', name: 'list', component: CommentListView },
+  { path: '/', name: 'list', component: CommentListView, props: { pageNum: 1 } },
+  { path: '/page/:pageNum(\\d+)', name: 'list-page', component: CommentListView, props: true },
   { path: '/comment/:id', name: 'detail', component: CommentDetailView },
   { path: '/:pathMatch(.*)*', name: 'not-found', component: NotFoundView },
 ]
@@ -21,7 +22,7 @@ router.beforeEach((to, from) => {
 })
 
 export function wasPreviouslyOnList() {
-  return previousRouteName === 'list'
+  return previousRouteName === 'list' || previousRouteName === 'list-page'
 }
 
 export default router
