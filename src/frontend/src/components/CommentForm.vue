@@ -32,7 +32,7 @@
       <div class="form-actions">
         <button type="button" class="btn-preview" @click="handlePreview">Preview</button>
         <button type="submit" class="btn-submit" :disabled="submitting">{{ submitting ? 'Sending...' : 'Submit' }}</button>
-        <button type="button" class="btn-cancel" @click="$emit('cancel')">Cancel</button>
+        <button type="button" class="btn-cancel" @click="handleCancel">Cancel</button>
       </div>
       <div v-if="submitError" class="submit-error">{{ submitError }}</div>
     </form>
@@ -72,6 +72,7 @@ const uploadType = ref('image')
 const captchaKey = ref('')
 const captchaImage = ref('')
 const captchaValue = ref('')
+const attachmentIds = ref([])
 
 onMounted(async () => {
   try {
@@ -123,6 +124,7 @@ async function handleFileSelected(e) {
       uploadFile = await resizeImage(file)
     }
     const result = await store.uploadAttachment(uploadFile)
+    attachmentIds.value.push(result.id)
     const url = result.file.startsWith('http') ? result.file : API_BASE + result.file
     const quill = quillRef.value?.getQuill()
     if (quill) {
@@ -174,15 +176,23 @@ async function handleSubmit() {
       parent_id: props.parentId,
       captcha_key: captchaKey.value,
       captcha_value: captchaValue.value,
+      attachment_ids: attachmentIds.value,
     })
     quillRef.value?.getQuill()?.setContents([])
+    attachmentIds.value = []
     emit('comment-created', response)
   } catch (err) {
     submitError.value = err.message
+    attachmentIds.value = []
     refreshCaptcha()
   } finally {
     submitting.value = false
   }
+}
+
+function handleCancel() {
+  attachmentIds.value = []
+  emit('cancel')
 }
 </script>
 

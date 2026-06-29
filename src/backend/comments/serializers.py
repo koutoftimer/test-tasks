@@ -3,6 +3,7 @@ from rest_framework import serializers
 
 from .models import Comment
 from accounts.serializers import ProfileSerializer
+from attachments.models import CommentAttachment
 
 
 class CommentListSerializer(serializers.ModelSerializer):
@@ -101,6 +102,12 @@ class CommentCreateSerializer(serializers.Serializer):
     parent_id = serializers.IntegerField(required=False, allow_null=True)
     captcha_key = serializers.CharField(write_only=True)
     captcha_value = serializers.CharField(write_only=True)
+    attachment_ids = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=CommentAttachment.objects.filter(comment__isnull=True),
+        required=False,
+        write_only=True,
+    )
 
     def validate_text(self, value):
         if not value or not value.strip():
@@ -133,6 +140,7 @@ class CommentCreateSerializer(serializers.Serializer):
 
         text = validated_data["text"]
         parent_id = validated_data.get("parent_id")
+        attachment_ids = validated_data.get("attachment_ids")
 
         request = self.context.get("request")
         profile = None
@@ -148,6 +156,11 @@ class CommentCreateSerializer(serializers.Serializer):
             text=text,
             parent=parent,
         )
+
+        if attachment_ids:
+            CommentAttachment.objects.filter(
+                id__in=[att.id for att in attachment_ids],
+            ).update(comment=comment)
 
         return comment
 
