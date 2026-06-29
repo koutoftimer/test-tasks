@@ -40,6 +40,13 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
+if DEBUG:
+    INSTALLED_APPS.append("silk")
+    MIDDLEWARE.insert(
+        MIDDLEWARE.index("django.middleware.security.SecurityMiddleware") + 1,
+        "silk.middleware.SilkyMiddleware",
+    )
+
 ROOT_URLCONF = "comments.urls"
 
 TEMPLATES = [
