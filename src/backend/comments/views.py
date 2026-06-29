@@ -1,12 +1,14 @@
+from django.db.models import BooleanField, Count, Exists, OuterRef, Q, Value
+from django.http import Http404
+
 from captcha.helpers import captcha_image_url
 from captcha.models import CaptchaStore
-from django.core.exceptions import ObjectDoesNotExist
-from django.db.models import BooleanField, Count, Exists, OuterRef, Q, Value
-from rest_framework import status, viewsets
+from rest_framework import viewsets, mixins
 from rest_framework.decorators import action, api_view
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from likes.serializers import CreateVoteSerializer
 from likes.models import CommentVote
 from .models import Comment, sanitize_text
 from .serializers import (
@@ -16,7 +18,12 @@ from .serializers import (
 )
 
 
-class CommentViewSet(viewsets.ModelViewSet):
+class CommentViewSet(
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.CreateModelMixin,
+    viewsets.GenericViewSet,
+):
     http_method_names = ["get", "post", "delete", "head", "options"]
 
     def _get_current_user(self):
@@ -25,14 +32,8 @@ class CommentViewSet(viewsets.ModelViewSet):
             return user
         return None
 
-    def get_serializer_context(self):
-        context = super().get_serializer_context()
-        user = self._get_current_user()
-        context["voter"] = user
-        return context
-
     def get_serializer_class(self):
-        if self.request.method == "POST":
+        if self.action == "create":
             return CommentCreateSerializer
         if self.action == "replies":
             return CommentDetailSerializer
@@ -73,67 +74,48 @@ class CommentViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["get"])
     def replies(self, request, pk=None):
-        try:
-            comment = Comment.objects.get(pk=pk)
-        except ObjectDoesNotExist:
-            return Response(
-                {"error": "Comment not found."}, status=status.HTTP_404_NOT_FOUND
-            )
-        replies = comment.replies.all().order_by("id")
+        comment = self.get_object()
+
+        replies = comment.replies.all().select_related("profile__user").order_by("id")
         replies = self._annotate_votes(replies)
-        serializer = CommentDetailSerializer(
-            replies, many=True, context=self.get_serializer_context()
-        )
+
+        serializer = self.get_serializer(replies, many=True)
         return Response(serializer.data)
 
     @action(
-        detail=True, methods=["post", "delete"], permission_classes=[IsAuthenticated]
+        detail=True,
+        methods=["post", "delete"],
+        permission_classes=[IsAuthenticated],
     )
     def vote(self, request, pk=None):
-        try:
-            comment = Comment.objects.get(pk=pk)
-        except ObjectDoesNotExist:
-            return Response(
-                {"error": "Comment not found."}, status=status.HTTP_404_NOT_FOUND
-            )
-        user = request.user
+        comment = self.get_object()
 
         if request.method == "DELETE":
-            updated = CommentVote.objects.filter(comment=comment, user=user).update(
-                vote=None
-            )
-            if not updated:
-                return Response(
-                    {"error": "Vote not found."},
-                    status=status.HTTP_404_NOT_FOUND,
-                )
-            like_count = comment.votes.filter(vote=True).count()
-            dislike_count = comment.votes.filter(vote=False).count()
-            return Response(
-                {"vote": None, "like_count": like_count, "dislike_count": dislike_count}
-            )
+            if not CommentVote.objects.filter(
+                comment=comment, user=request.user
+            ).update(vote=None):
+                raise Http404()
+            vote_type = None
+        else:
+            serializer = CreateVoteSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            vote_type = serializer.validated_data["vote"]
 
-        vote_type = request.data.get("vote")
-        if vote_type not in ("like", "dislike"):
-            return Response(
-                {"error": 'vote must be "like" or "dislike".'},
-                status=status.HTTP_400_BAD_REQUEST,
+            CommentVote.objects.update_or_create(
+                comment=comment,
+                user=request.user,
+                defaults={"vote": vote_type == "like"},
             )
 
-        vote_val = True if vote_type == "like" else False
-        CommentVote.objects.update_or_create(
-            comment=comment,
-            user=user,
-            defaults={"vote": vote_val},
-        )
+        instance = self._annotate_votes(Comment.objects.filter(pk=pk)).get()
 
-        like_count = comment.votes.filter(vote=True).count()
-        dislike_count = comment.votes.filter(vote=False).count()
         return Response(
             {
                 "vote": vote_type,
-                "like_count": like_count,
-                "dislike_count": dislike_count,
+                "like_count": instance.like_count,
+                "dislike_count": instance.dislike_count,
+                "is_liked": instance.is_liked,
+                "is_disliked": instance.is_disliked,
             }
         )
 
