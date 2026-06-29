@@ -1,6 +1,7 @@
 services:
   db:
     image: postgres:18
+    shm_size: 1024m
     env_file:
       - .env.prod
     volumes:
