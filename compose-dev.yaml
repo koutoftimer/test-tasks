@@ -1,10 +1,8 @@
 services:
   db:
     image: postgres:18
-    environment:
-      POSTGRES_DB: comments
-      POSTGRES_USER: comments
-      POSTGRES_PASSWORD: comments
+    env_file:
+      - .env
     volumes:
       - postgres:/var/lib/postgresql/data
     ports:
