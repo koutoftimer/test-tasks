@@ -1,4 +1,13 @@
-from django.db.models import BooleanField, Count, Exists, OuterRef, Q, Value
+from django.db.models import (
+    BooleanField,
+    Count,
+    Exists,
+    OuterRef,
+    Value,
+    Subquery,
+    IntegerField,
+)
+from django.db.models.functions import Coalesce
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 
@@ -53,9 +62,28 @@ class CommentViewSet(
                 is_liked=Value(False, output_field=BooleanField()),
                 is_disliked=Value(False, output_field=BooleanField()),
             )
+
+        likes_subquery = (
+            CommentVote.objects.filter(comment=OuterRef("pk"), vote=True)
+            .values("comment")
+            .annotate(count=Count("id"))
+            .values("count")
+        )
+        dislikes_subquery = (
+            CommentVote.objects.filter(comment=OuterRef("pk"), vote=False)
+            .values("comment")
+            .annotate(count=Count("id"))
+            .values("count")
+        )
+
         return qs.annotate(
-            like_count=Count("votes", filter=Q(votes__vote=True)),
-            dislike_count=Count("votes", filter=Q(votes__vote=False)),
+            # Coalesce ensures we get 0 instead of None if no votes exist
+            like_count=Coalesce(
+                Subquery(likes_subquery, output_field=IntegerField()), 0
+            ),
+            dislike_count=Coalesce(
+                Subquery(dislikes_subquery, output_field=IntegerField()), 0
+            ),
         )
 
     def get_queryset(self):
