@@ -1,5 +1,4 @@
 -r base-frozen.txt
 django-silk==5.5.0
 django-stubs==5.2.3
-faker==40.23.0
 locust==2.44.4

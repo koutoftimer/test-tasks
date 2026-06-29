@@ -1,5 +1,4 @@
 -r base.txt
 django-silk>=5.2,<6.0
 django-stubs>=5.2,<6.0
-faker>=33,<42
 locust>=2.32,<3.0
