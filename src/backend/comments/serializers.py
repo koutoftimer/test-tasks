@@ -145,8 +145,8 @@ class CommentCreateSerializer(serializers.Serializer):
         )
 
         if attachment_ids:
-            CommentAttachment.objects.filter(
-                id__in=[att.id for att in attachment_ids],
+            CommentAttachment.objects.select_for_update().filter(
+                id__in=[att.id for att in attachment_ids]
             ).update(comment=comment)
 
         return comment
