@@ -5,6 +5,7 @@ from django.urls import reverse
 from rest_framework.test import APIClient
 
 from comments.models import Comment
+from likes.redis_service import get_redis
 
 
 class TestVote(TestCase):
@@ -17,6 +18,12 @@ class TestVote(TestCase):
             username="other", email="other@example.com", password="pass"
         )
         self.comment = Comment.objects.create(text="Test comment")
+
+    def tearDown(self):
+        try:
+            get_redis().flushdb()
+        except Exception:
+            pass
 
     def _auth(self, username: str = "voter", password: str = "pass") -> dict[str, str]:
         response = self.client.post(
@@ -228,9 +235,15 @@ class TestVote(TestCase):
     def test_annotations_require_auth(self):
         """is_liked/is_disliked default to False for unauthenticated requests."""
         tokens = self._auth()
-        self.client.post(self._vote_url(), {"vote": "like"}, headers=self._header(tokens))
+        self.client.post(
+            self._vote_url(), {"vote": "like"}, headers=self._header(tokens)
+        )
 
-        self.client.post(self._vote_url(), {"vote": "dislike"}, headers=self._header(self._auth("other")))
+        self.client.post(
+            self._vote_url(),
+            {"vote": "dislike"},
+            headers=self._header(self._auth("other")),
+        )
 
         response = self.client.get(reverse("comment-list"))
         comment_data = response.json()["results"][0]

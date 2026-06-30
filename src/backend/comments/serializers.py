@@ -6,15 +6,17 @@ from rest_framework import serializers
 from .models import Comment
 from accounts.serializers import ProfileSerializer
 from attachments.models import CommentAttachment
+from likes.redis_service import get_vote_counts
 
 
 class CommentListSerializer(serializers.ModelSerializer):
     profile = ProfileSerializer(read_only=True, allow_null=True)
     reply_count = serializers.SerializerMethodField()
-    like_count = serializers.SerializerMethodField()
-    dislike_count = serializers.SerializerMethodField()
-    is_liked = serializers.SerializerMethodField()
-    is_disliked = serializers.SerializerMethodField()
+    # this fields should be populated with annotation
+    like_count = serializers.IntegerField(read_only=True)
+    dislike_count = serializers.IntegerField(read_only=True)
+    is_liked = serializers.BooleanField(read_only=True)
+    is_disliked = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = Comment
@@ -34,30 +36,15 @@ class CommentListSerializer(serializers.ModelSerializer):
     def get_reply_count(self, obj):
         return obj.replies.count()
 
-    def get_like_count(self, obj):
-        if hasattr(obj, "like_count"):
-            return obj.like_count
-        return obj.votes.filter(vote=True).count()
-
-    def get_dislike_count(self, obj):
-        if hasattr(obj, "dislike_count"):
-            return obj.dislike_count
-        return obj.votes.filter(vote=False).count()
-
-    def get_is_liked(self, obj):
-        return getattr(obj, "is_liked", False)
-
-    def get_is_disliked(self, obj):
-        return getattr(obj, "is_disliked", False)
-
 
 class CommentDetailSerializer(serializers.ModelSerializer):
     profile = ProfileSerializer(read_only=True, allow_null=True)
     replies = serializers.SerializerMethodField()
-    like_count = serializers.SerializerMethodField()
-    dislike_count = serializers.SerializerMethodField()
-    is_liked = serializers.SerializerMethodField()
-    is_disliked = serializers.SerializerMethodField()
+    # this fields shouls be populated with annotation from Redis
+    like_count = serializers.IntegerField(read_only=True)
+    dislike_count = serializers.IntegerField(read_only=True)
+    is_liked = serializers.BooleanField(read_only=True)
+    is_disliked = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = Comment
@@ -75,28 +62,16 @@ class CommentDetailSerializer(serializers.ModelSerializer):
         ]
 
     def get_replies(self, obj):
-        replies = obj.replies.all().order_by("id")
-        if replies:
-            return CommentDetailSerializer(
-                replies, many=True, context=self.context
-            ).data
-        return []
+        # We need a method here because we need to attach redis data
+        # to the nested replies before they are serialized
+        replies = obj.replies.all().select_related("profile__user").order_by("id")
 
-    def get_like_count(self, obj):
-        if hasattr(obj, "like_count"):
-            return obj.like_count
-        return obj.votes.filter(vote=True).count()
+        # Access the viewset method to attach redis data to this sub-list
+        view = self.context.get("view")
+        if view and hasattr(view, "_attach_votes_from_redis"):
+            view._attach_votes_from_redis(replies)
 
-    def get_dislike_count(self, obj):
-        if hasattr(obj, "dislike_count"):
-            return obj.dislike_count
-        return obj.votes.filter(vote=False).count()
-
-    def get_is_liked(self, obj):
-        return getattr(obj, "is_liked", False)
-
-    def get_is_disliked(self, obj):
-        return getattr(obj, "is_disliked", False)
+        return CommentDetailSerializer(replies, many=True, context=self.context).data
 
 
 class CommentCreateSerializer(serializers.Serializer):
@@ -177,4 +152,9 @@ class CommentCreateSerializer(serializers.Serializer):
         return comment
 
     def to_representation(self, instance):
+        # Ensure the new instance has the attributes expected by the DetailSerializer
+        instance.is_liked = False
+        instance.is_disliked = False
+        instance.like_count = 0
+        instance.dislike_count = 0
         return CommentDetailSerializer(instance, context=self.context).data

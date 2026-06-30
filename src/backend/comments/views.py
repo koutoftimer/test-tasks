@@ -1,25 +1,24 @@
-from django.db.models import (
-    BooleanField,
-    Count,
-    Exists,
-    OuterRef,
-    Value,
-    Subquery,
-    IntegerField,
-)
-from django.db.models.functions import Coalesce
+from typing import Iterable
+
+from django.db.models import Count
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 
 from captcha.helpers import captcha_image_url
 from captcha.models import CaptchaStore
-from rest_framework import viewsets, mixins
+from rest_framework import mixins, viewsets
 from rest_framework.decorators import action, api_view
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from likes.serializers import CreateVoteSerializer
 from likes.models import CommentVote
+from likes.redis_service import (
+    get_batch_vote_counts,
+    get_vote_counts,
+    get_user_votes,
+    sync_vote,
+)
+from likes.serializers import CreateVoteSerializer
 from .models import Comment, sanitize_text
 from .serializers import (
     CommentCreateSerializer,
@@ -49,46 +48,42 @@ class CommentViewSet(
             return CommentDetailSerializer
         return CommentListSerializer
 
-    def _annotate_votes(self, qs):
-        user = self._get_current_user()
-        if user:
-            user_votes = CommentVote.objects.filter(comment=OuterRef("pk"), user=user)
-            qs = qs.annotate(
-                is_liked=Exists(user_votes.filter(vote=True)),
-                is_disliked=Exists(user_votes.filter(vote=False)),
-            )
-        else:
-            qs = qs.annotate(
-                is_liked=Value(False, output_field=BooleanField()),
-                is_disliked=Value(False, output_field=BooleanField()),
-            )
+    def _attach_votes_from_redis(self, comments: Iterable[Comment]):
+        if not comments:
+            return
+        comment_ids = [c.pk for c in comments]
 
-        likes_subquery = (
-            CommentVote.objects.filter(comment=OuterRef("pk"), vote=True)
-            .values("comment")
-            .annotate(count=Count("id"))
-            .values("count")
-        )
-        dislikes_subquery = (
-            CommentVote.objects.filter(comment=OuterRef("pk"), vote=False)
-            .values("comment")
-            .annotate(count=Count("id"))
-            .values("count")
-        )
+        counts = get_batch_vote_counts(comment_ids)
 
-        return qs.annotate(
-            # Coalesce ensures we get 0 instead of None if no votes exist
-            like_count=Coalesce(
-                Subquery(likes_subquery, output_field=IntegerField()), 0
-            ),
-            dislike_count=Coalesce(
-                Subquery(dislikes_subquery, output_field=IntegerField()), 0
-            ),
-        )
+        user_votes = {}
+        if self.request.user and self.request.user.is_authenticated:
+            user_votes = get_user_votes(self.request.user.id, comment_ids)
+
+        for comment in comments:
+            cid = comment.pk
+            like_count, dislike_count = counts.get(cid, (0, 0))
+            comment.like_count = like_count
+            comment.dislike_count = dislike_count
+            user_vote = user_votes.get(cid)
+            comment.is_liked = user_vote == 1
+            comment.is_disliked = user_vote == -1
+
+    def get_serializer(self, *args, **kwargs):
+        """
+        Custom hook to attach Redis data just before the objects are serialized.
+        This handles list, retrieve, and custom actions automatically.
+        """
+        if args and self.action != "create":
+            instances = args[0]
+            if isinstance(instances, Iterable):
+                self._attach_votes_from_redis(instances)
+            else:
+                self._attach_votes_from_redis([instances])
+
+        return super().get_serializer(*args, **kwargs)
 
     def get_queryset(self):
         qs = Comment.objects.filter(parent=None).select_related("profile__user")
-        qs = self._annotate_votes(qs)
         sort_by = self.request.query_params.get("sort", "-id")
         allowed_sorts = {
             "user_name": "profile__user__username",
@@ -104,10 +99,7 @@ class CommentViewSet(
     @action(detail=True, methods=["get"])
     def replies(self, request, pk=None):
         comment = get_object_or_404(Comment, pk=pk)
-
         replies = comment.replies.all().select_related("profile__user").order_by("id")
-        replies = self._annotate_votes(replies)
-
         serializer = self.get_serializer(replies, many=True)
         return Response(serializer.data)
 
@@ -136,15 +128,20 @@ class CommentViewSet(
                 defaults={"vote": vote_type == "like"},
             )
 
-        instance = self._annotate_votes(Comment.objects.filter(pk=pk)).get()
+        new_vote = None if vote_type is None else vote_type == "like"
+        sync_vote(request.user.id, comment.pk, new_vote)
+
+        like_count, dislike_count = get_vote_counts(comment.pk)
+        user_votes = get_user_votes(request.user.id, [comment.pk])
+        user_vote = user_votes.get(comment.pk)
 
         return Response(
             {
                 "vote": vote_type,
-                "like_count": instance.like_count,
-                "dislike_count": instance.dislike_count,
-                "is_liked": instance.is_liked,
-                "is_disliked": instance.is_disliked,
+                "like_count": like_count,
+                "dislike_count": dislike_count,
+                "is_liked": user_vote == 1,
+                "is_disliked": user_vote == -1,
             }
         )
 
@@ -156,7 +153,6 @@ def sanitize(request):
 
 @api_view(["GET"])
 def captcha(request):
-    # TODO: clean up stale captchas in periodic Celery task
     new_key = CaptchaStore.generate_key()
     image_url = captcha_image_url(new_key)
     return Response(

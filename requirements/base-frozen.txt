@@ -10,3 +10,4 @@ python-dateutil==2.9.0
 html-sanitizer==2.6.0
 django-lifecycle==1.3.0
 faker==40.23.0
+redis==5.2.1

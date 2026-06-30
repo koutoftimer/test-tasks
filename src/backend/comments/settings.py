@@ -94,6 +94,10 @@ MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
 API_BASE_URL = os.environ.get("API_BASE_URL", "http://api.comments:8002").rstrip("/")
 
+REDIS_HOST = os.environ.get("REDIS_HOST", "redis")
+REDIS_PORT = int(os.environ.get("REDIS_PORT", "6379"))
+REDIS_DB = int(os.environ.get("REDIS_DB", "0"))
+
 MASTER_CAPTCHA_VALUE = os.environ.get("MASTER_CAPTCHA_VALUE", "")
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
@@ -202,3 +206,41 @@ CSRF_TRUSTED_ORIGINS = (
 )
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    # 1. Define how logs should look
+    "formatters": {
+        "verbose": {
+            "format": "{asctime} {module} {levelname} {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",  # Apply the formatter here
+        },
+    },
+    "loggers": {
+        # Your app logic
+        "likes": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        # CRITICAL: Captures 500 errors and Django system warnings
+        "django": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        # Optional: Captures SQL if you set level to DEBUG (useful for profiling)
+        "django.db.backends": {
+            "handlers": ["console"],
+            "level": "INFO",  # Change to DEBUG to see every SQL query
+            "propagate": False,
+        },
+    },
+}

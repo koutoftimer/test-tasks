@@ -1,4 +1,15 @@
 services:
+  redis:
+    image: redis:8-alpine
+    expose:
+      - "6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
   db:
     image: postgres:18
     shm_size: 1024m
@@ -37,6 +48,8 @@ services:
       db:
         condition: service_healthy
       pgbouncer:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     volumes:
       - media:/app/media
