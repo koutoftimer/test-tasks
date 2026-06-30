@@ -10,7 +10,10 @@ from PIL import Image
 from captcha.models import CaptchaStore
 from rest_framework.test import APIClient
 
+from django.contrib.auth.models import User
+
 from attachments.models import CommentAttachment
+from comments.models import Comment
 
 
 def _make_image():
@@ -158,3 +161,71 @@ class TestCommentCreate(TestCase):
                 format="json",
             )
         self.assertEqual(resp.status_code, 400)
+
+
+class TestCommentAuthorDenorm(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.url = reverse("comment-list")
+        self.user = User.objects.create_user(
+            username="testuser", email="test@example.com", password="pass"
+        )
+        _make_captcha()
+
+    def _auth_header(self):
+        response = self.client.post(
+            reverse("jwt-create"),
+            data={"username": "testuser", "password": "pass"},
+        )
+        return {"Authorization": f"Bearer {response.json()['access']}"}
+
+    def _create_comment(self, headers=None):
+        payload = {
+            "text": "Test comment",
+            "captcha_key": "captcha-key",
+            "captcha_value": "answer",
+        }
+        kwargs = {"data": payload, "format": "json"}
+        if headers:
+            kwargs["headers"] = headers
+        return self.client.post(self.url, **kwargs)
+
+    def test_author_fields_set_on_creation(self):
+        """Authenticated user's username and email are stored on the comment."""
+        response = self._create_comment(headers=self._auth_header())
+        self.assertEqual(response.status_code, 201)
+        comment = Comment.objects.get(id=response.json()["id"])
+        self.assertEqual(comment.author_username, "testuser")
+        self.assertEqual(comment.author_email, "test@example.com")
+
+    def test_anonymous_comment_empty_author_fields(self):
+        """Unauthenticated comment gets empty author fields."""
+        response = self._create_comment()
+        self.assertEqual(response.status_code, 201)
+        comment = Comment.objects.get(id=response.json()["id"])
+        self.assertEqual(comment.author_username, "")
+        self.assertEqual(comment.author_email, "")
+
+    def test_update_username_propagates_to_comments(self):
+        """Changing username updates denormalized field on existing comments."""
+        response = self._create_comment(headers=self._auth_header())
+        comment = Comment.objects.get(id=response.json()["id"])
+
+        self.user.username = "updated_user"
+        self.user.save()
+
+        comment.refresh_from_db()
+        self.assertEqual(comment.author_username, "updated_user")
+        self.assertEqual(comment.author_email, "test@example.com")
+
+    def test_update_email_propagates_to_comments(self):
+        """Changing email updates denormalized field on existing comments."""
+        response = self._create_comment(headers=self._auth_header())
+        comment = Comment.objects.get(id=response.json()["id"])
+
+        self.user.email = "updated@example.com"
+        self.user.save()
+
+        comment.refresh_from_db()
+        self.assertEqual(comment.author_username, "testuser")
+        self.assertEqual(comment.author_email, "updated@example.com")

@@ -82,7 +82,7 @@ export const useCommentStore = defineStore('comment', {
     total: 0,
     page: 1,
     totalPages: 1,
-    sortBy: '-created_at',
+    sortBy: '-id',
     loading: false,
     error: null,
     showForm: false,
@@ -99,7 +99,7 @@ export const useCommentStore = defineStore('comment', {
       this.error = null
       try {
         const response = await api.get('/comments/', {
-          params: { page: this.page, sort: this.sortBy },
+          params: { page: this.page, ordering: this.sortBy },
         })
         this.comments = response.data.results || []
         this.total = response.data.count || 0

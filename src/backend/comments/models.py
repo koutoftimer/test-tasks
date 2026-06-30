@@ -79,10 +79,33 @@ class Comment(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
+    # denormalization required for performant ordering
+    author_email = models.CharField(max_length=254, blank=True, null=False, default="")
+    author_username = models.CharField(
+        max_length=150, blank=True, null=False, default=""
+    )
+
     class Meta:
         verbose_name = "Comment"
         verbose_name_plural = "Comments"
         ordering = ["id"]
+        indexes = [
+            models.Index(
+                fields=["author_email"],
+                name="idx_comment_top_email",
+                condition=models.Q(parent_id__isnull=True),
+            ),
+            models.Index(
+                fields=["author_username"],
+                name="idx_comment_top_username",
+                condition=models.Q(parent_id__isnull=True),
+            ),
+            models.Index(
+                fields=["id"],
+                name="idx_comment_top_id",
+                condition=models.Q(parent_id__isnull=True),
+            ),
+        ]
 
     def __str__(self):
         if not self.profile_id:

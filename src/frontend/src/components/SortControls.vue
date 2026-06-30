@@ -15,13 +15,13 @@
 </template>
 
 <script setup>
-defineProps({ sortBy: { type: String, default: '-created_at' } })
+defineProps({ sortBy: { type: String, default: '-id' } })
 defineEmits(['sort'])
 
 const sortOptions = [
-  { value: 'created_at', label: 'Date' },
-  { value: 'user_name', label: 'User Name' },
-  { value: 'email', label: 'E-mail' },
+  { value: 'id', label: 'Date' },
+  { value: 'author_username', label: 'User Name' },
+  { value: 'author_email', label: 'E-mail' },
 ]
 </script>
 

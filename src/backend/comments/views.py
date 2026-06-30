@@ -1,12 +1,11 @@
 from typing import Iterable
 
-from django.db.models import Count
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 
 from captcha.helpers import captcha_image_url
 from captcha.models import CaptchaStore
-from rest_framework import mixins, viewsets
+from rest_framework import mixins, viewsets, filters
 from rest_framework.decorators import action, api_view
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -34,12 +33,10 @@ class CommentViewSet(
     viewsets.GenericViewSet,
 ):
     http_method_names = ["get", "post", "delete", "head", "options"]
-
-    def _get_current_user(self):
-        user = self.request.user
-        if user.is_authenticated:
-            return user
-        return None
+    filter_backends = [filters.OrderingFilter]
+    ordering_fields = ["author_username", "author_email", "id"]
+    ordering = "-id"
+    queryset = Comment.objects.filter(parent=None)
 
     def get_serializer_class(self):
         if self.action == "create":
@@ -81,20 +78,6 @@ class CommentViewSet(
                 self._attach_votes_from_redis([instances])
 
         return super().get_serializer(*args, **kwargs)
-
-    def get_queryset(self):
-        qs = Comment.objects.filter(parent=None).select_related("profile__user")
-        sort_by = self.request.query_params.get("sort", "-id")
-        allowed_sorts = {
-            "user_name": "profile__user__username",
-            "-user_name": "-profile__user__username",
-            "email": "profile__user__email",
-            "-email": "-profile__user__email",
-            "created_at": "id",
-            "-created_at": "-id",
-        }
-        sort_field = allowed_sorts.get(sort_by, "-id")
-        return qs.order_by(sort_field)
 
     @action(detail=True, methods=["get"])
     def replies(self, request, pk=None):

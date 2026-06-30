@@ -3,10 +3,10 @@ from django.utils import timezone
 
 from rest_framework import serializers
 
-from .models import Comment
+from accounts.models import Profile
 from accounts.serializers import ProfileSerializer
 from attachments.models import CommentAttachment
-from likes.redis_service import get_vote_counts
+from .models import Comment
 
 
 class CommentListSerializer(serializers.ModelSerializer):
@@ -123,16 +123,18 @@ class CommentCreateSerializer(serializers.Serializer):
         return attrs
 
     def create(self, validated_data):
-        from accounts.models import Profile
-
         text = validated_data["text"]
         parent_id = validated_data.get("parent_id")
         attachment_ids = validated_data.get("attachment_ids")
 
         request = self.context.get("request")
         profile = None
+        author_username = ""
+        author_email = ""
         if request and request.user.is_authenticated:
             profile, _ = Profile.objects.get_or_create(user=request.user)
+            author_username = profile.user.username
+            author_email = profile.user.email
 
         parent = None
         if parent_id:
@@ -142,6 +144,8 @@ class CommentCreateSerializer(serializers.Serializer):
             profile=profile,
             text=text,
             parent=parent,
+            author_username=author_username,
+            author_email=author_email,
         )
 
         if attachment_ids:

@@ -37,7 +37,7 @@ import CommentList from '../components/CommentList.vue'
 import SortControls from '../components/SortControls.vue'
 import Pagination from '../components/Pagination.vue'
 
-const DEFAULT_SORT = '-created_at'
+const DEFAULT_SORT = '-id'
 
 const props = defineProps({ pageNum: { type: Number, default: 1 } })
 const store = useCommentStore()
@@ -46,8 +46,8 @@ const router = useRouter()
 
 onMounted(() => {
   store.page = Number(props.pageNum)
-  if (route.query.sort && route.query.sort !== store.sortBy) {
-    store.sortBy = route.query.sort
+  if (route.query.ordering && route.query.ordering !== store.sortBy) {
+    store.sortBy = route.query.ordering
   }
   store.fetchComments()
 })
@@ -60,7 +60,7 @@ function handleSort(field) {
   }
 
   const page = Number(props.pageNum)
-  const query = store.sortBy !== DEFAULT_SORT ? { sort: store.sortBy } : {}
+  const query = store.sortBy !== DEFAULT_SORT ? { ordering: store.sortBy } : {}
 
   if (page > 1) {
     router.replace({ name: 'list-page', params: { pageNum: page }, query })
@@ -71,8 +71,8 @@ function handleSort(field) {
 
 function handleGoToPage(p) {
   const query = {}
-  if (route.query.sort && route.query.sort !== DEFAULT_SORT) {
-    query.sort = route.query.sort
+  if (route.query.ordering && route.query.ordering !== DEFAULT_SORT) {
+    query.ordering = route.query.ordering
   }
   router.push({ name: 'list-page', params: { pageNum: Number(p) }, query })
 }

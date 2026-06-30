@@ -6,13 +6,6 @@ from .settings import *  # noqa
 
 DEBUG = False
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": ":memory:",
-    }
-}
-
 REDIS_FAKE = True
 
 PASSWORD_HASHERS = [
