@@ -1,7 +1,9 @@
 import os
 
 from django.conf import settings
+
 from rest_framework import serializers
+from PIL import Image
 
 from comments.models import IMAGE_EXTENSIONS, SUPPORTED_EXTENSIONS
 from .models import CommentAttachment, FileType
@@ -31,6 +33,14 @@ class UploadSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "Text file exceeds maximum size of 100KB."
             )
+        if ext in IMAGE_EXTENSIONS:
+            if value.size > 5 * 1024 * 1024:
+                raise serializers.ValidationError("Uploaded image is too big")
+            try:
+                img = Image.open(value)
+                img.load()
+            except Exception:
+                raise serializers.ValidationError("Uploaded file is not a valid image")
         return value
 
     def create(self, validated_data):

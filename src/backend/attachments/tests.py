@@ -1,4 +1,6 @@
 import io
+import struct
+import zlib
 from datetime import timedelta
 
 from django.conf import settings
@@ -109,6 +111,66 @@ class TestUpload(TestCase):
         att = CommentAttachment.objects.get(pk=response.json()["id"])
         content = att.file.read()
         self.assertEqual(len(content), 5000)
+
+    def test_upload_zero_byte_image(self):
+        """Empty .png file returns 400."""
+        f = SimpleUploadedFile("empty.png", b"", content_type="image/png")
+        response = self.client.post(self.url, {"file": f}, format="multipart")
+        self.assertEqual(response.status_code, 400)
+
+    def test_upload_no_extension(self):
+        """File without extension returns 400."""
+        f = SimpleUploadedFile("test", b"x", content_type="text/plain")
+        response = self.client.post(self.url, {"file": f}, format="multipart")
+        self.assertEqual(response.status_code, 400)
+
+    def test_upload_trailing_dot(self):
+        """File named 'test.' (trailing dot, no extension) returns 400."""
+        f = SimpleUploadedFile("test.", b"x", content_type="text/plain")
+        response = self.client.post(self.url, {"file": f}, format="multipart")
+        self.assertEqual(response.status_code, 400)
+
+    def test_upload_corrupt_image(self):
+        """Random bytes with .png extension returns 400."""
+        f = SimpleUploadedFile("corrupt.png", b"\x00\x01\x02" * 21, content_type="image/png")
+        response = self.client.post(self.url, {"file": f}, format="multipart")
+        self.assertEqual(response.status_code, 400)
+
+    def test_upload_truncated_image(self):
+        """Valid PNG header with truncated body returns 400."""
+        buf = io.BytesIO()
+        Image.new("RGB", (1, 1), color="red").save(buf, format="PNG")
+        full = buf.getvalue()
+        f = SimpleUploadedFile("truncated.png", full[:30], content_type="image/png")
+        response = self.client.post(self.url, {"file": f}, format="multipart")
+        self.assertEqual(response.status_code, 400)
+
+    def test_upload_image_too_large(self):
+        """Image >5MB returns 400."""
+        size = 5 * 1024 * 1024 + 1
+        f = SimpleUploadedFile("large.png", b"x" * size, content_type="image/png")
+        response = self.client.post(self.url, {"file": f}, format="multipart")
+        self.assertEqual(response.status_code, 400)
+
+    def _make_png_bomb(self, width=65535, height=65535):
+        """Craft a minimal PNG declaring extreme dimensions."""
+        def chunk(chunk_type, data):
+            c = chunk_type + data
+            return struct.pack(">I", len(data)) + c + struct.pack(">I", zlib.crc32(c) & 0xFFFFFFFF)
+
+        sig = b"\x89PNG\r\n\x1a\n"
+        ihdr = chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))
+        raw = zlib.compress(b"\x00\x00\x00\x00")
+        idat = chunk(b"IDAT", raw)
+        iend = chunk(b"IEND", b"")
+        return sig + ihdr + idat + iend
+
+    def test_upload_decompression_bomb(self):
+        """A PNG with extreme dimensions is rejected as invalid image (400)."""
+        data = self._make_png_bomb(65535, 65535)
+        f = SimpleUploadedFile("bomb.png", data, content_type="image/png")
+        response = self.client.post(self.url, {"file": f}, format="multipart")
+        self.assertEqual(response.status_code, 400)
 
     def test_orphan_cleanup_old(self):
         """Orphan attachment (>3h old, no comment) deleted on next upload."""
