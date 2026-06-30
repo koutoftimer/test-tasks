@@ -1,4 +1,19 @@
 services:
+  redis-warmer:
+    image: comments-api
+    env_file:
+      - .env.prod
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # We only run sync if Redis is empty
+    command: >
+      sh -c "if [ $$(redis-cli -h redis EXISTS v:c) -eq 0 ]; then
+               python manage.py sync_votes_to_redis;
+             fi"
+
   redis:
     image: redis:8-alpine
     expose:
@@ -18,7 +33,7 @@ services:
     volumes:
       - postgres:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U comments -d comments"]
+      test: ["CMD-SHELL", "pg_isready -h localhost -U $$DB_USER -d $$DB_USER"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -31,7 +46,7 @@ services:
     depends_on:
       - db
     healthcheck:
-      test: ['CMD', 'pg_isready', '-h', 'localhost']
+      test: ['CMD-SHELL', 'pg_isready -h localhost -p 5432  -U $$DB_USER -d $$DB_NAME']
       interval: 5s
       timeout: 5s
       retries: 5
@@ -40,6 +55,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.prod
+    image: comments-api
     expose:
       - "8002"
     env_file:
