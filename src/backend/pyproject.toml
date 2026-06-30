@@ -1,0 +1,16 @@
+[project]
+name = "comments"
+version = "0.1.0"
+description = "Comments app"
+requires-python = "=3.13"
+
+[tool.locust]
+locustfile = "./locustfile.py"
+# headless = true
+# autostart = true
+# master = true
+# expect-workers = 5
+host = "http://api.comments:8003"
+users = 700
+spawn-rate = 5
+run-time = "3m"

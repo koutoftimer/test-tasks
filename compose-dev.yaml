@@ -73,7 +73,6 @@ services:
       - ./src/backend:/app
     command: >
       sh -c "python manage.py migrate &&
-             python manage.py sync_votes_to_redis &&
              python manage.py runserver 0.0.0.0:8002"
 
   test:
@@ -85,6 +84,37 @@ services:
     volumes:
       - ./src/backend:/app
     command: python manage.py test --parallel
+
+  api-locust:
+    image: comments-api
+    expose:
+      - "8003"
+    ports:
+      - "8003:8003"
+    env_file:
+      - .env
+    environment:
+      - DJANGO_DEBUG=False
+    depends_on:
+      db:
+        condition: service_healthy
+      pgbouncer:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./src/backend:/app
+    command: >
+      gunicorn comments.wsgi:application
+      --bind 0.0.0.0:8003
+      --workers 4
+      --threads 3
+      --worker-class gthread
+      --max-requests 1000
+      --max-requests-jitter 50
+      --keep-alive 5
+      --timeout 30
+      --error-logfile -
 
   nginx:
     image: nginx:1.31
