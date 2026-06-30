@@ -87,10 +87,6 @@ services:
 
   api-locust:
     image: comments-api
-    expose:
-      - "8003"
-    ports:
-      - "8003:8003"
     env_file:
       - .env
     environment:
@@ -120,6 +116,7 @@ services:
     image: nginx:1.31
     ports:
       - "8002:8002"
+      - "8003:8003"
     volumes:
       - ./src/nginx/default.conf:/etc/nginx/conf.d/default.conf
       - ./src/frontend/dist:/usr/share/nginx/html
