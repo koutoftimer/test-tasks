@@ -8,6 +8,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      api:
+        condition: service_started
     # We only run sync if Redis is empty
     command: >
       sh -c "if [ $$(redis-cli -h redis EXISTS v:c) -eq 0 ]; then
