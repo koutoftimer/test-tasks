@@ -1,5 +1,6 @@
 from typing import Iterable
 
+from django.db.models import Count
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 
@@ -37,6 +38,29 @@ class CommentViewSet(
     ordering_fields = ["author_username", "author_email", "id"]
     ordering = "-id"
     queryset = Comment.objects.filter(parent=None)
+
+    def list(self, request, *args, **kwargs):
+        base_qs = self.get_queryset().only("id")
+        page = self.paginate_queryset(base_qs)
+
+        if page is not None:
+            paged_ids = [c.id for c in page]
+
+            final_qs = (
+                Comment.objects.filter(id__in=paged_ids)
+                .select_related("profile__user")
+                .annotate(
+                    reply_count=Count("replies"),
+                )
+                .order_by("-id")
+            )
+
+            self._attach_votes_from_redis(final_qs)
+
+            serializer = self.get_serializer(final_qs, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        return super().list(request, *args, **kwargs)
 
     def get_serializer_class(self):
         if self.action == "create":

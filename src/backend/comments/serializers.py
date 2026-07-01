@@ -11,8 +11,8 @@ from .models import Comment
 
 class CommentListSerializer(serializers.ModelSerializer):
     profile = ProfileSerializer(read_only=True, allow_null=True)
-    reply_count = serializers.SerializerMethodField()
     # this fields should be populated with annotation
+    reply_count = serializers.IntegerField(read_only=True)
     like_count = serializers.IntegerField(read_only=True)
     dislike_count = serializers.IntegerField(read_only=True)
     is_liked = serializers.BooleanField(read_only=True)
@@ -32,9 +32,6 @@ class CommentListSerializer(serializers.ModelSerializer):
             "is_liked",
             "is_disliked",
         ]
-
-    def get_reply_count(self, obj):
-        return obj.replies.count()
 
 
 class CommentDetailSerializer(serializers.ModelSerializer):
