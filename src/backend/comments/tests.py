@@ -229,3 +229,68 @@ class TestCommentAuthorDenorm(TestCase):
         comment.refresh_from_db()
         self.assertEqual(comment.author_username, "testuser")
         self.assertEqual(comment.author_email, "updated@example.com")
+
+
+class TestCommentOrdering(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.url = reverse("comment-list")
+        self.c1 = Comment.objects.create(
+            text="First", author_username="alpha", author_email="a@test.com"
+        )
+        self.c2 = Comment.objects.create(
+            text="Second", author_username="beta", author_email="b@test.com"
+        )
+        self.c3 = Comment.objects.create(
+            text="Third", author_username="gamma", author_email="c@test.com"
+        )
+
+    def _get_ids(self, ordering=None):
+        params = {}
+        if ordering:
+            params["ordering"] = ordering
+        response = self.client.get(self.url, params)
+        return [c["id"] for c in response.json()["results"]]
+
+    def test_default_ordering(self):
+        """Default ordering is -id (newest first)."""
+        ids = self._get_ids()
+        self.assertEqual(ids, [self.c3.id, self.c2.id, self.c1.id])
+
+    def test_ordering_by_id_asc(self):
+        """?ordering=id returns oldest first."""
+        ids = self._get_ids("id")
+        self.assertEqual(ids, [self.c1.id, self.c2.id, self.c3.id])
+
+    def test_ordering_by_id_desc(self):
+        """?ordering=-id returns newest first."""
+        ids = self._get_ids("-id")
+        self.assertEqual(ids, [self.c3.id, self.c2.id, self.c1.id])
+
+    def test_ordering_by_author_username(self):
+        """?ordering=author_username sorts alphabetically by username."""
+        ids = self._get_ids("author_username")
+        self.assertEqual(ids, [self.c1.id, self.c2.id, self.c3.id])
+
+    def test_ordering_by_author_username_desc(self):
+        """?ordering=-author_username sorts reverse alphabetically."""
+        ids = self._get_ids("-author_username")
+        self.assertEqual(ids, [self.c3.id, self.c2.id, self.c1.id])
+
+    def test_ordering_by_author_email(self):
+        """?ordering=author_email sorts alphabetically by email."""
+        ids = self._get_ids("author_email")
+        self.assertEqual(ids, [self.c1.id, self.c2.id, self.c3.id])
+
+    def test_ordering_invalid_field(self):
+        """Invalid ordering field falls back to default ordering (-id)."""
+        ids = self._get_ids("nonexistent")
+        self.assertEqual(ids, [self.c3.id, self.c2.id, self.c1.id])
+
+    def test_ordering_preserves_pagination(self):
+        """Response with ordering param still includes pagination fields."""
+        response = self.client.get(self.url, {"ordering": "author_username"})
+        data = response.json()
+        self.assertIn("count", data)
+        self.assertIn("results", data)
+        self.assertIsInstance(data["results"], list)

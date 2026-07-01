@@ -40,7 +40,7 @@ class CommentViewSet(
     queryset = Comment.objects.filter(parent=None)
 
     def list(self, request, *args, **kwargs):
-        base_qs = self.get_queryset().only("id")
+        base_qs = self.filter_queryset(self.get_queryset().only("id"))
         page = self.paginate_queryset(base_qs)
 
         if page is not None:
@@ -54,8 +54,6 @@ class CommentViewSet(
                 )
                 .order_by("-id")
             )
-
-            self._attach_votes_from_redis(final_qs)
 
             serializer = self.get_serializer(final_qs, many=True)
             return self.get_paginated_response(serializer.data)
