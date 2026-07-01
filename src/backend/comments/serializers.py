@@ -59,14 +59,12 @@ class CommentDetailSerializer(serializers.ModelSerializer):
         ]
 
     def get_replies(self, obj):
-        # We need a method here because we need to attach redis data
-        # to the nested replies before they are serialized
-        replies = obj.replies.all().select_related("profile__user").order_by("id")
+        registry = self.context.get("registry")
 
-        # Access the viewset method to attach redis data to this sub-list
-        view = self.context.get("view")
-        if view and hasattr(view, "_attach_votes_from_redis"):
-            view._attach_votes_from_redis(replies)
+        if registry is None:
+            return []
+
+        replies = registry.get(obj.id, [])
 
         return CommentDetailSerializer(replies, many=True, context=self.context).data
 

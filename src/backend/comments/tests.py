@@ -1,6 +1,7 @@
 from datetime import timedelta
 from io import BytesIO
 
+from django.core.files.base import ContentFile
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
@@ -14,6 +15,9 @@ from django.contrib.auth.models import User
 
 from attachments.models import CommentAttachment
 from comments.models import Comment
+
+from accounts.models import Profile
+from likes.redis_service import sync_vote
 
 
 def _make_image():
@@ -294,3 +298,102 @@ class TestCommentOrdering(TestCase):
         self.assertIn("count", data)
         self.assertIn("results", data)
         self.assertIsInstance(data["results"], list)
+
+
+class TestCommentReplies(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.root = Comment.objects.create(text="Root")
+
+    def _replies_url(self, pk):
+        return reverse("comment-replies", args=[pk])
+
+    def _direct_children_url(self):
+        return self._replies_url(self.root.id)
+
+    def test_replies_direct_children(self):
+        """Returns direct children of the root comment."""
+        c1 = Comment.objects.create(text="Child 1", parent=self.root)
+        c2 = Comment.objects.create(text="Child 2", parent=self.root)
+        response = self.client.get(self._direct_children_url())
+        self.assertEqual(response.status_code, 200)
+        ids = [r["id"] for r in response.json()]
+        self.assertEqual(ids, [c1.id, c2.id])
+
+    def test_replies_nested_two_levels(self):
+        """Nested replies are included recursively."""
+        child = Comment.objects.create(text="Child", parent=self.root)
+        grandchild = Comment.objects.create(text="Grandchild", parent=child)
+        response = self.client.get(self._direct_children_url())
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["id"], child.id)
+        self.assertEqual(len(data[0]["replies"]), 1)
+        self.assertEqual(data[0]["replies"][0]["id"], grandchild.id)
+
+    def test_replies_deeply_nested(self):
+        """Nesting works beyond 2 levels (3 levels deep)."""
+        a = Comment.objects.create(text="A", parent=self.root)
+        a1 = Comment.objects.create(text="A1", parent=a)
+        a1a = Comment.objects.create(text="A1a", parent=a1)
+        response = self.client.get(self._direct_children_url())
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()[0]["replies"][0]["replies"][0]["id"], a1a.id)
+
+    def test_replies_empty(self):
+        """Comment with no replies returns []. """
+        response = self.client.get(self._direct_children_url())
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), [])
+
+    def test_replies_404(self):
+        """Non-existent comment returns 404."""
+        response = self.client.get(self._replies_url(99999))
+        self.assertEqual(response.status_code, 404)
+
+    def test_replies_no_auth(self):
+        """Reply endpoint works without authentication."""
+        Comment.objects.create(text="Child", parent=self.root)
+        response = self.client.get(self._direct_children_url())
+        self.assertEqual(response.status_code, 200)
+
+    def test_replies_includes_profile_data(self):
+        """Each reply includes profile with id, username, homepage, avatar."""
+        user = User.objects.create_user(
+            username="testuser", email="test@example.com", password="pass"
+        )
+        profile, _ = Profile.objects.get_or_create(user=user)
+        buf = BytesIO()
+        Image.new("RGB", (10, 10), color="blue").save(buf, format="PNG")
+        buf.seek(0)
+        profile.avatar.save("avatar.png", ContentFile(buf.getvalue()))
+        profile.homepage = "https://example.com"
+        profile.save()
+
+        child = Comment.objects.create(text="Child", parent=self.root, profile=profile)
+
+        response = self.client.get(self._direct_children_url())
+        self.assertEqual(response.status_code, 200)
+        reply = response.json()[0]
+        self.assertIsNotNone(reply["profile"])
+        self.assertEqual(reply["profile"]["username"], "testuser")
+        self.assertEqual(reply["profile"]["homepage"], "https://example.com")
+        self.assertIsInstance(reply["profile"]["avatar"], str)
+        self.assertTrue(reply["profile"]["avatar"])
+
+    def test_replies_vote_data(self):
+        """Replies include is_liked, like_count, dislike_count from Redis."""
+        user = User.objects.create_user(
+            username="voter", email="v@test.com", password="pass"
+        )
+        child = Comment.objects.create(text="Child", parent=self.root)
+        sync_vote(user.id, child.id, True)
+
+        self.client.force_authenticate(user=user)
+        response = self.client.get(self._direct_children_url())
+        self.assertEqual(response.status_code, 200)
+        reply = response.json()[0]
+        self.assertTrue(reply["is_liked"])
+        self.assertEqual(reply["like_count"], 1)
+        self.assertEqual(reply["dislike_count"], 0)

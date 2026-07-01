@@ -1,5 +1,6 @@
 from typing import Iterable
 
+from django.db import connection
 from django.db.models import Count
 from django.http import Http404
 from django.shortcuts import get_object_or_404
@@ -41,6 +42,7 @@ class CommentViewSet(
 
     def list(self, request, *args, **kwargs):
         base_qs = self.filter_queryset(self.get_queryset().only("id"))
+        ordering = base_qs.query.order_by or ("-id",)
         page = self.paginate_queryset(base_qs)
 
         if page is not None:
@@ -52,7 +54,7 @@ class CommentViewSet(
                 .annotate(
                     reply_count=Count("replies"),
                 )
-                .order_by("-id")
+                .order_by(*ordering)
             )
 
             serializer = self.get_serializer(final_qs, many=True)
@@ -103,9 +105,40 @@ class CommentViewSet(
 
     @action(detail=True, methods=["get"])
     def replies(self, request, pk=None):
-        comment = get_object_or_404(Comment, pk=pk)
-        replies = comment.replies.all().select_related("profile__user").order_by("id")
-        serializer = self.get_serializer(replies, many=True)
+        if not Comment.objects.filter(pk=pk).exists():
+            raise Http404()
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                WITH RECURSIVE thread AS (
+                    SELECT id FROM comments_comment WHERE id = %s
+                    UNION ALL
+                    SELECT c.id FROM comments_comment c
+                    INNER JOIN thread t ON t.id = c.parent_id
+                )
+                SELECT id FROM thread WHERE id != %s;
+            """,
+                [pk, pk],
+            )
+            descendant_ids = [row[0] for row in cursor.fetchall()]
+
+        all_nodes = (
+            Comment.objects.filter(id__in=descendant_ids)
+            .select_related("profile__user")
+            .order_by("id")
+        )
+
+        self._attach_votes_from_redis(all_nodes)
+
+        registry = {}
+        for node in all_nodes:
+            registry.setdefault(node.parent_id, []).append(node)
+
+        serializer = self.get_serializer(
+            registry.get(int(pk), []),  # Top level children
+            many=True,
+            context={**self.get_serializer_context(), "registry": registry},
+        )
         return Response(serializer.data)
 
     @action(
