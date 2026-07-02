@@ -46,6 +46,8 @@ if DEBUG:
         MIDDLEWARE.index("django.middleware.security.SecurityMiddleware") + 1,
         "silk.middleware.SilkyMiddleware",
     )
+    # see: https://silk.readthedocs.io/en/latest/configuration.html#meta-profiling
+    SILKY_META = True
 
 ROOT_URLCONF = "comments.urls"
 
@@ -107,7 +109,7 @@ REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "comments.pagination.CommentsPagination",
     "PAGE_SIZE": 25,
     "DEFAULT_RENDERER_CLASSES": [
-        "rest_framework.renderers.JSONRenderer",
+        "comments.renderers.FastJSONRenderer",
     ],
     "DEFAULT_PARSER_CLASSES": [
         "rest_framework.parsers.JSONParser",
@@ -118,6 +120,11 @@ REST_FRAMEWORK = {
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
 }
+
+if DEBUG:
+    REST_FRAMEWORK["DEFAULT_RENDERER_CLASSES"].append(
+        "rest_framework.renderers.BrowsableAPIRenderer",
+    )
 
 
 # JWT

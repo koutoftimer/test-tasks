@@ -4,6 +4,7 @@ import { API_BASE } from '../utils/config.js'
 
 const api = axios.create({
   baseURL: API_BASE + '/api',
+  headers: { Accept: 'application/json' },
 })
 
 let isRefreshing = false

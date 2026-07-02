@@ -34,39 +34,26 @@ class CommentListSerializer(serializers.ModelSerializer):
         ]
 
 
-class CommentDetailSerializer(serializers.ModelSerializer):
+class CommentDetailSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
     profile = ProfileSerializer(read_only=True, allow_null=True)
+    text = serializers.CharField()
+    created_at = serializers.DateTimeField()
+
     replies = serializers.SerializerMethodField()
+
     # this fields shouls be populated with annotation from Redis
     like_count = serializers.IntegerField(read_only=True)
     dislike_count = serializers.IntegerField(read_only=True)
     is_liked = serializers.BooleanField(read_only=True)
     is_disliked = serializers.BooleanField(read_only=True)
 
-    class Meta:
-        model = Comment
-        fields = [
-            "id",
-            "profile",
-            "text",
-            "parent",
-            "created_at",
-            "replies",
-            "like_count",
-            "dislike_count",
-            "is_liked",
-            "is_disliked",
-        ]
-
     def get_replies(self, obj):
         registry = self.context.get("registry")
-
         if registry is None:
             return []
-
         replies = registry.get(obj.id, [])
-
-        return CommentDetailSerializer(replies, many=True, context=self.context).data
+        return [self.to_representation(reply) for reply in replies]
 
 
 class CommentCreateSerializer(serializers.Serializer):

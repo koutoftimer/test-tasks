@@ -13,4 +13,4 @@ locustfile = "./locustfile.py"
 host = "http://api.comments:8003"
 users = 700
 spawn-rate = 5
-run-time = "3m"
+run-time = "10m"
