@@ -7,10 +7,12 @@ from typing import cast, Callable
 
 from django.conf import settings
 from django.core.files.base import ContentFile
-from django.db import models
+from django.db import connection, models
 
 from html_sanitizer import Sanitizer
 from PIL import Image
+
+from .utils import silk_profiler
 
 IMAGE_EXTENSIONS = (".jpg", ".jpeg", ".png", ".gif")
 SUPPORTED_EXTENSIONS = IMAGE_EXTENSIONS + (".txt",)
@@ -109,6 +111,25 @@ class Comment(models.Model):
                 condition=models.Q(parent_id__isnull=True),
             ),
         ]
+
+    @staticmethod
+    def get_descendant_ids(pk: int) -> list[int]:
+        """Returns list of ids for all descendants of provided comment"""
+        with silk_profiler(name="Retrieving recursive reply tree"):
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    WITH RECURSIVE thread AS (
+                        SELECT id FROM comments_comment WHERE id = %s
+                        UNION ALL
+                        SELECT c.id FROM comments_comment c
+                        INNER JOIN thread t ON t.id = c.parent_id
+                    )
+                    SELECT id FROM thread WHERE id != %s;
+                """,
+                    [pk, pk],
+                )
+                return [row[0] for row in cursor.fetchall()]
 
     def __str__(self):
         if not self.profile_id:

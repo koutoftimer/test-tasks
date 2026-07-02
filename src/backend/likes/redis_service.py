@@ -10,10 +10,14 @@ Key             Type    Fields                          Meaning
 """
 
 import pathlib
+from typing import Iterable
 
 from django.conf import settings
 
 import redis
+
+from comments.models import Comment
+from comments.utils import silk_profiler
 
 _SYNC_SCRIPT = pathlib.Path(__file__).parent.joinpath("sync_script.lua").read_text()
 
@@ -113,3 +117,30 @@ def sync_vote(user_id: int, comment_id: int, new_vote_value: bool | None) -> Non
         str(comment_id),
         vote_map[new_vote_value],
     )
+
+
+def attach_votes_from_redis(comments: Iterable[Comment], user_id: int | None):
+    """Dynamically assigns new properties to provided comments inplace in order
+    to annotate comments with `like_count`, `dislike_count`, `is_liked` and
+    `is_disliked`.
+    """
+    with silk_profiler(name="Annotating comments using Redis"):
+        if not comments:
+            return
+        comment_ids = [c.pk for c in comments]
+
+        counts = get_batch_vote_counts(comment_ids)
+
+        if user_id is None:
+            user_votes = {}
+        else:
+            user_votes = get_user_votes(user_id, comment_ids)
+
+        for comment in comments:
+            cid = comment.pk
+            like_count, dislike_count = counts.get(cid, (0, 0))
+            comment.like_count = like_count
+            comment.dislike_count = dislike_count
+            user_vote = user_votes.get(cid)
+            comment.is_liked = user_vote == 1
+            comment.is_disliked = user_vote == -1

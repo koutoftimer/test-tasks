@@ -1,6 +1,5 @@
 from typing import Iterable
 
-from django.db import connection
 from django.db.models import Count
 from django.http import Http404
 from django.shortcuts import get_object_or_404
@@ -14,7 +13,7 @@ from rest_framework.response import Response
 
 from likes.models import CommentVote
 from likes.redis_service import (
-    get_batch_vote_counts,
+    attach_votes_from_redis,
     get_vote_counts,
     get_user_votes,
     sync_vote,
@@ -26,6 +25,7 @@ from .serializers import (
     CommentDetailSerializer,
     CommentListSerializer,
 )
+from .utils import silk_profiler
 
 
 class CommentViewSet(
@@ -70,24 +70,14 @@ class CommentViewSet(
         return CommentListSerializer
 
     def _attach_votes_from_redis(self, comments: Iterable[Comment]):
-        if not comments:
-            return
-        comment_ids = [c.pk for c in comments]
-
-        counts = get_batch_vote_counts(comment_ids)
-
-        user_votes = {}
-        if self.request.user and self.request.user.is_authenticated:
-            user_votes = get_user_votes(self.request.user.id, comment_ids)
-
-        for comment in comments:
-            cid = comment.pk
-            like_count, dislike_count = counts.get(cid, (0, 0))
-            comment.like_count = like_count
-            comment.dislike_count = dislike_count
-            user_vote = user_votes.get(cid)
-            comment.is_liked = user_vote == 1
-            comment.is_disliked = user_vote == -1
+        attach_votes_from_redis(
+            comments=comments,
+            user_id=(
+                self.request.user.pk
+                if self.request.user and self.request.user.is_authenticated
+                else None
+            ),
+        )
 
     def get_serializer(self, *args, **kwargs):
         """
@@ -104,42 +94,37 @@ class CommentViewSet(
         return super().get_serializer(*args, **kwargs)
 
     @action(detail=True, methods=["get"])
-    def replies(self, request, pk=None):
-        if not Comment.objects.filter(pk=pk).exists():
-            raise Http404()
-        with connection.cursor() as cursor:
-            cursor.execute(
-                """
-                WITH RECURSIVE thread AS (
-                    SELECT id FROM comments_comment WHERE id = %s
-                    UNION ALL
-                    SELECT c.id FROM comments_comment c
-                    INNER JOIN thread t ON t.id = c.parent_id
+    def replies(self, request, pk):
+        with silk_profiler(name="Total"):
+            with silk_profiler(name="Ensure comment exists"):
+                if not Comment.objects.filter(pk=pk).exists():
+                    raise Http404()
+
+            descendant_ids = Comment.get_descendant_ids(pk)
+
+            with silk_profiler(name="Collecting nodes"):
+                all_nodes = (
+                    Comment.objects.filter(id__in=descendant_ids)
+                    .select_related("profile__user")
+                    .all()
                 )
-                SELECT id FROM thread WHERE id != %s;
-            """,
-                [pk, pk],
-            )
-            descendant_ids = [row[0] for row in cursor.fetchall()]
 
-        all_nodes = (
-            Comment.objects.filter(id__in=descendant_ids)
-            .select_related("profile__user")
-            .order_by("id")
-        )
+            self._attach_votes_from_redis(all_nodes)
 
-        self._attach_votes_from_redis(all_nodes)
+            with silk_profiler(name="Restoring registry"):
+                registry = {}
+                for node in all_nodes:
+                    registry.setdefault(node.parent_id, []).append(node)
 
-        registry = {}
-        for node in all_nodes:
-            registry.setdefault(node.parent_id, []).append(node)
+            with silk_profiler(name="Serializing"):
+                serializer = self.get_serializer(
+                    registry.get(int(pk), []),  # Top level children
+                    many=True,
+                    context={**self.get_serializer_context(), "registry": registry},
+                )
 
-        serializer = self.get_serializer(
-            registry.get(int(pk), []),  # Top level children
-            many=True,
-            context={**self.get_serializer_context(), "registry": registry},
-        )
-        return Response(serializer.data)
+            with silk_profiler(name="Returning response"):
+                return Response(serializer.data)
 
     @action(
         detail=True,
