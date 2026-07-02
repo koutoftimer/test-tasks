@@ -1,6 +1,7 @@
 import io
 import os
 import uuid
+
 from datetime import datetime
 from typing import cast, Callable
 
@@ -92,11 +93,13 @@ class Comment(models.Model):
         indexes = [
             models.Index(
                 fields=["author_email"],
+                include=["id"],
                 name="idx_comment_top_email",
                 condition=models.Q(parent_id__isnull=True),
             ),
             models.Index(
                 fields=["author_username"],
+                include=["id"],
                 name="idx_comment_top_username",
                 condition=models.Q(parent_id__isnull=True),
             ),
