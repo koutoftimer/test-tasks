@@ -106,10 +106,12 @@ services:
       --workers 4
       --threads 3
       --worker-class gthread
-      --max-requests 1000
-      --max-requests-jitter 50
+      --max-requests 5000
+      --max-requests-jitter 500
+      --preload
       --keep-alive 5
-      --timeout 30
+      --timeout 60
+      --graceful-timeout 10
       --error-logfile -
 
   nginx:
