@@ -27,16 +27,4 @@ EXPOSE 8002
 ENTRYPOINT ["/entrypoint.sh"]
 
 # CMD is passed as arguments to the entrypoint (the "$@" part)
-CMD [
-    "gunicorn", "comments.wsgi:application",
-    "--bind", "0.0.0.0:8002",
-    "--workers", "4",
-    "--threads", "3",
-    "--worker-class", "gthread",
-    "--max-requests", "1000",
-    "--max-requests-jitter", "50",
-    "--keep-alive", "2",
-    "--timeout", "30",
-    "--access-logfile", "-",
-    "--error-logfile", "-"
-]
+CMD [ "gunicorn", "comments.wsgi:application", "--bind", "0.0.0.0:8002", "--workers", "4", "--threads", "3", "--worker-class", "gthread", "--max-requests", "5000", "--max-requests-jitter", "500", "--preload", "--keep-alive", "5", "--timeout", "60", "--graceful-timeout", "60", "--access-logfile", "-", "--error-logfile", "-" ]
